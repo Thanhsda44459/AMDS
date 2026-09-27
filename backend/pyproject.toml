@@ -1,0 +1,35 @@
+[tool.ruff]
+# Phiên bản Python mục tiêu (dùng để quyết định rule nào áp dụng)
+target-version = "py312"
+
+# Độ dài dòng tối đa (giống black)
+line-length = 100
+
+# Bỏ qua các thư mục không cần lint
+exclude = [
+    ".venv",
+    "__pycache__",
+    "*.pyc",
+    ".git",
+]
+
+[tool.ruff.lint]
+# Bật các nhóm rule cơ bản
+select = [
+    "E",   # pycodestyle errors (style)
+    "F",   # pyflakes (lỗi logic, import thừa, biến không dùng)
+    "I",   # isort (sắp xếp import)
+    "B",   # flake8-bugbear (lỗi logic phổ biến)
+    "UP",  # pyupgrade (gợi ý cú pháp Python mới)
+]
+
+# Tắt các rule gây nhiễu (tùy chọn)
+ignore = [
+    "E501",   # line too long — để formatter lo, không cần lint cảnh báo
+]
+
+[tool.ruff.format]
+# Cấu hình formatter (dùng khi chạy `ruff format`)
+quote-style = "double"          # dùng " thay vì '
+indent-style = "space"
+line-ending = "auto"
