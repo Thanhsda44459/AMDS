@@ -1,0 +1,46 @@
+# docker-compose.yml
+# Backend/Frontend KHÔNG nằm trong file này — chạy native để hot-reload nhanh.
+
+services:
+  mongodb:
+    image: mongo:7.0
+    container_name: quan4-mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_DATABASE: quan4_culinary
+      # Không set username/password ở dev để đơn giản.
+      # Nếu cần auth, bật MONGO_INITDB_ROOT_USERNAME/PASSWORD và cập nhật MONGODB_URI.
+    volumes:
+      - mongodb_data:/data/db
+      - mongodb_config:/data/configdb
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.runCommand({ ping: 1 }).ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  redis:
+    image: redis:7.2-alpine
+    container_name: quan4-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  mongodb_data:
+    name: quan4_mongodb_data
+  mongodb_config:
+    name: quan4_mongodb_config
+  redis_data:
+    name: quan4_redis_data
