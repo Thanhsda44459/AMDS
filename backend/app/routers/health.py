@@ -4,7 +4,7 @@ from datetime import UTC, datetime
 from fastapi import APIRouter, status
 from fastapi.responses import JSONResponse
 
-from app.database import get_db_client
+from app.db import get_db_client
 
 router = APIRouter(tags=["health"])
 

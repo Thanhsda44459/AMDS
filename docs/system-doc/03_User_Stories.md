@@ -1,98 +1,136 @@
-# 03. User Stories — LinhUngGuide
+# 03 — User Stories (Góc nhìn người dùng)
 
-Định dạng: **Là [vai trò], tôi muốn [hành động], để [giá trị/lý do].**
-Mỗi story kèm tiêu chí chấp nhận (Acceptance Criteria — AC) và liên kết tới yêu cầu chức năng (FR) tương ứng trong `02_Requirements.md`.
+Định dạng: **Là một [vai trò], tôi muốn [việc], để [lợi ích].** Mỗi story có tiêu chí chấp nhận (AC).
+Vai trò: **Du khách** (khách, không cần đăng nhập), **Chủ quán** (poi_owner), **Admin**, **Super Admin**.
 
-## 1. Vai trò: Khách tham quan (Visitor)
+## Epic 1 — Khởi động và ngôn ngữ (Du khách)
 
-**US-01 — Vào cổng bằng QR**
-Là một khách tham quan, tôi muốn quét mã QR tại cổng chùa, để mở ngay web app mà không cần tìm kiếm hay tải ứng dụng.
-- AC1: Quét QR mở đúng địa chỉ web app trên trình duyệt mặc định của điện thoại.
-- AC2: Nếu khách chưa thanh toán, app hiển thị ngay màn hình yêu cầu thanh toán.
-- Liên quan: FR-01.
+**US-01.** Là du khách, tôi muốn chọn ngôn ngữ ngay khi mở app, để mọi nội dung hiển thị bằng ngôn ngữ tôi hiểu.
+- AC: Sau splash, có màn chọn ngôn ngữ; các ngôn ngữ chính vi, en, zh, ja, ko luôn có.
+- AC: Chọn xong, giao diện đổi sang ngôn ngữ đó.
 
-**US-02 — Thanh toán trực tuyến**
-Là một khách tham quan, tôi muốn thanh toán trực tuyến bằng ví điện tử/ngân hàng qua Payoo, để không phải xếp hàng hay mang tiền mặt.
-- AC1: Khách được chuyển tới trang thanh toán Payoo trong vòng 2 giây sau khi bấm "Pay Now (Online)".
-- AC2: Sau khi thanh toán thành công, khách tự động quay lại app và được cấp quyền sử dụng ngay.
-- AC3: Nếu thanh toán chưa hoàn tất, app hiển thị trạng thái "đang chờ" và tự thử lại theo chu kỳ hợp lý.
-- Liên quan: FR-02, FR-04.
+**US-02.** Là du khách, tôi muốn app mở nhanh dù mạng chậm, để không phải chờ lâu.
+- AC: Nếu đã có dữ liệu lưu trong máy, app hiển thị ngay từ dữ liệu đó trong lúc cập nhật nền.
+- AC: App có thể bắt đầu bằng tiếng Anh rồi tự chuyển sang ngôn ngữ đích khi sẵn sàng.
 
-**US-03 — Thanh toán tiền mặt**
-Là một khách tham quan không có phương tiện thanh toán trực tuyến, tôi muốn trả tiền mặt tại quầy, để vẫn sử dụng được app.
-- AC1: Khách nhận được một mã ngắn, dễ đọc để đưa cho nhân viên.
-- AC2: Sau khi nhân viên xác nhận đã thu tiền, khách nhập mã và được cấp quyền truy cập ngay.
-- Liên quan: FR-03, FR-04.
+**US-03.** Là du khách, tôi muốn đổi ngôn ngữ giữa chừng mà không bị lỗi nội dung nửa vời, để trải nghiệm liền mạch.
+- AC: Chỉ khi cả nội dung các POI gần nhất và giao diện đều sẵn sàng thì app mới coi là đã đổi xong.
 
-**US-04 — Xem vị trí bản thân trên bản đồ**
-Là một khách tham quan, tôi muốn thấy vị trí hiện tại của mình trên bản đồ khuôn viên chùa, để không bị lạc đường.
-- AC1: Chấm định vị cập nhật theo thời gian thực khi khách di chuyển.
-- AC2: Nếu thiết bị từ chối quyền định vị, app hiển thị thông báo hướng dẫn cấp quyền.
-- Liên quan: FR-06.
+## Epic 2 — Khám phá bản đồ (Du khách)
 
-**US-05 — Khám phá POI lân cận**
-Là một khách tham quan, tôi muốn thấy những điểm tham quan gần vị trí của mình được làm nổi bật trên bản đồ, để biết nên ghé đâu tiếp theo.
-- AC1: POI trong bán kính cấu hình hiển thị icon nổi bật khác với POI ở xa.
-- AC2: Chạm vào icon POI mở ra thẻ thông tin chi tiết.
-- Liên quan: FR-07.
+**US-10.** Là du khách, tôi muốn xem bản đồ các quán ăn quanh mình, để chọn nơi muốn ghé.
+- AC: Bản đồ hiển thị các POI đang hoạt động; bấm vào POI thấy tên, mô tả, ảnh, thực đơn.
 
-**US-06 — Tự động nghe thuyết minh khi đến gần**
-Là một khách tham quan, tôi muốn nội dung thuyết minh tự động được gợi ý khi tôi bước vào khu vực của một POI, để có trải nghiệm liền mạch như có hướng dẫn viên đi cùng.
-- AC1: Khi khách vào phạm vi bán kính của POI, app hiển thị thông báo/gợi ý phát audio.
-- AC2: Khách có thể bỏ qua hoặc tắt tính năng tự phát nếu muốn tự điều khiển.
-- Liên quan: FR-08.
+**US-11.** Là du khách, tôi muốn bấm nút định vị để biết mình đang ở đâu, để dễ so với các quán xung quanh.
+- AC: App dùng vị trí gần nhất còn đủ tốt nếu có; nếu không, chờ tối đa 15 giây rồi thông báo.
 
-**US-07 — Đọc & nghe mô tả POI theo ngôn ngữ ưa thích**
-Là một khách tham quan nước ngoài, tôi muốn đọc và nghe mô tả POI bằng ngôn ngữ mẹ đẻ của mình, để hiểu trọn vẹn ý nghĩa văn hoá – lịch sử.
-- AC1: Danh sách ngôn ngữ có ít nhất 15 lựa chọn.
-- AC2: Khi đổi ngôn ngữ, nội dung văn bản và audio đang mở cập nhật ngay mà không cần tải lại trang.
-- Liên quan: FR-10, FR-11, FR-12.
+**US-12.** Là du khách, tôi muốn chọn kiểu bản đồ (online, offline, kết hợp), để dùng được cả khi không có mạng.
+- AC: Chế độ kết hợp tự chuyển sang bản đồ đã tải khi mất mạng và quay lại online sau một độ trễ ngắn.
 
-**US-08 — Nhận gợi ý lộ trình tham quan**
-Là một khách tham quan lần đầu đến chùa, tôi muốn được gợi ý một lộ trình tham quan hợp lý, để không bỏ sót điểm quan trọng và không đi lại lộn xộn.
-- AC1: Hệ thống đề xuất tối thiểu một lộ trình mặc định.
-- AC2: Khách có thể tuỳ chỉnh số lượng POI trong lộ trình.
-- Liên quan: FR-09.
+## Epic 3 — Thuyết minh tự động (Du khách)
 
-**US-09 — Hỏi chatbot AI**
-Là một khách tham quan, tôi muốn hỏi chatbot những câu hỏi tự do (ví dụ "Bức tượng này được xây năm nào?"), để nhận câu trả lời ngay lập tức mà không cần tìm nhân viên.
-- AC1: Chatbot trả lời đúng ngôn ngữ mà khách dùng để hỏi.
-- AC2: Câu trả lời dựa trên thông tin có thật trong kho tri thức của chùa (không bịa thông tin).
-- AC3: Nếu câu hỏi có liên quan tới một POI cụ thể, câu trả lời có thể kèm ảnh minh hoạ.
-- Liên quan: FR-14, FR-15, FR-16.
+**US-20.** Là du khách, tôi muốn khi đi đến gần một quán thì app tự đọc giới thiệu, để tôi không phải nhìn màn hình.
+- AC: Khi vào bán kính (mặc định 30 m) và ở lại đủ 3 giây, thuyết minh bắt đầu phát.
+- AC: Cùng một quán không phát lại trong 5 phút.
 
-## 2. Vai trò: Nhân viên (Staff)
+**US-21.** Là du khách, tôi muốn app chọn quán phù hợp nhất khi đứng gần nhiều quán, để không bị nghe lẫn lộn.
+- AC: Quán có độ ưu tiên audio cao hơn được chọn trước; nếu bằng nhau chọn quán gần hơn; chỉ phát một nội dung một lúc.
 
-**US-10 — Xác nhận thanh toán tiền mặt**
-Là một nhân viên tại quầy, tôi muốn xác nhận nhanh một giao dịch tiền mặt bằng mã ngắn khách đưa, để khách có thể sử dụng app ngay mà không phải chờ đợi lâu.
-- AC1: Nhân viên nhập/xác nhận mã trong giao diện quản trị đơn giản.
-- AC2: Hệ thống hiển thị rõ trạng thái "đã xác nhận" sau khi thao tác thành công.
-- Liên quan: FR-03, FR-20.
+**US-22.** Là du khách, tôi muốn vẫn nghe được thuyết minh khi chưa có file âm thanh sẵn, để không bỏ lỡ thông tin.
+- AC: App thử lần lượt: file sinh sẵn, dịch và đọc theo yêu cầu, đọc trực tuyến, đọc bằng giọng của thiết bị.
 
-**US-11 — Theo dõi trạng thái phiên đang chờ**
-Là một nhân viên, tôi muốn thấy danh sách các phiên đang chờ thanh toán tiền mặt, để không bỏ sót khách đang chờ xác nhận.
-- Liên quan: FR-20.
+**US-23.** Là du khách, tôi muốn nếu đổi ngôn ngữ giữa lúc đang chờ thì không nghe nhầm ngôn ngữ cũ.
+- AC: Kết quả âm thanh của ngôn ngữ cũ bị bỏ khi đã đổi sang ngôn ngữ mới.
 
-## 3. Vai trò: Quản trị viên (Admin)
+## Epic 4 — Dùng offline (Du khách)
 
-**US-12 — Quản lý nội dung POI**
-Là một quản trị viên, tôi muốn thêm/sửa thông tin một điểm tham quan (toạ độ, bán kính, mô tả gốc, ảnh), để nội dung trên app luôn cập nhật và chính xác.
-- AC1: Sau khi lưu, hệ thống tự động kích hoạt pipeline dịch và sinh audio cho tất cả ngôn ngữ hỗ trợ.
-- AC2: Quản trị viên nhận được thông báo khi pipeline hoàn tất hoặc gặp lỗi.
-- Liên quan: FR-13, FR-19.
+**US-30.** Là du khách, tôi muốn tải trước gói dữ liệu cho chuyến đi, để dùng khi không có sóng.
+- AC: Gói gồm bản đồ, nội dung POI, hình ảnh và audio của ngôn ngữ đang chọn, được cài lần lượt và kiểm tra toàn vẹn trước khi dùng.
+- AC: Có hiển thị trạng thái "có bản cập nhật" hoặc "cần sửa gói".
 
-**US-13 — Theo dõi tình trạng hệ thống**
-Là một quản trị viên, tôi muốn xem bảng giám sát thời gian thực về tình trạng hệ thống (uptime, lỗi, độ trễ) và số liệu sử dụng, để phát hiện sớm sự cố và đánh giá hiệu quả vận hành.
-- AC1: Dashboard cập nhật số liệu theo chu kỳ ngắn (ví dụ mỗi 30 giây hoặc theo thời gian thực).
-- AC2: Có cảnh báo trực quan khi một dịch vụ backend gặp sự cố.
-- Liên quan: FR-22, FR-23.
+**US-31.** Là du khách, tôi muốn app không bị hỏng khi điện thoại hết dung lượng, để vẫn tải được gói quan trọng.
+- AC: Khi hết chỗ, app tự xóa bộ nhớ đệm tạm (audio/ảnh lẻ) để nhường chỗ cho gói.
 
-**US-14 — Phân quyền tài khoản**
-Là một quản trị viên, tôi muốn tạo tài khoản cho nhân viên mới với quyền hạn giới hạn (chỉ xác nhận thanh toán), để đảm bảo an toàn dữ liệu hệ thống.
-- Liên quan: FR-18.
+**US-32.** Là du khách, tôi muốn không bao giờ thấy màn hình trống khi mất mạng.
+- AC: Nếu thiếu dữ liệu ngôn ngữ đã chọn, app dùng tiếng Anh, rồi tiếng Việt.
 
-## 4. Vai trò: Ban quản lý chùa (gián tiếp, không thao tác trực tiếp trên hệ thống)
+## Epic 5 — Quyền riêng tư (Du khách)
 
-**US-15 — Xem báo cáo tổng quan**
-Là đại diện ban quản lý, tôi muốn xem báo cáo tổng hợp số lượt khách, doanh thu theo hình thức thanh toán, và các POI được quan tâm nhiều nhất, để đánh giá hiệu quả đầu tư hệ thống.
-- Liên quan: FR-23 (thực hiện thông qua quyền xem báo cáo trong admin dashboard, không phải vai trò đăng nhập riêng trong phạm vi đồ án).
+**US-40.** Là du khách, tôi muốn được hỏi trước khi bị thu thập dữ liệu sử dụng, để kiểm soát thông tin của mình.
+- AC: Chưa đồng ý thì không gửi dữ liệu analytics.
+- AC: Dữ liệu analytics gắn với thiết bị ẩn danh, không gắn danh tính.
+
+## Epic 6 — Chủ quán
+
+**US-50.** Là chủ quán, tôi muốn đăng ký tài khoản chủ quán, để đưa quán lên ứng dụng.
+- AC: Điền thông tin đăng ký, hệ thống tạo tài khoản chưa xác minh và đơn trạng thái "chờ duyệt".
+- AC: Số CCCD được lưu dạng mã hóa.
+
+**US-51.** Là chủ quán, tôi muốn biết khi nào đơn đăng ký được duyệt hay bị từ chối, để biết bước tiếp theo.
+- AC: Chưa được xác minh thì chỉ thấy màn hình trạng thái đăng ký; bị từ chối thì thấy ghi chú của admin.
+- AC: Được duyệt thì đăng nhập vào được khu vực chủ quán.
+
+**US-52.** Là chủ quán, tôi muốn thêm hoặc sửa thông tin quán của mình, để khách thấy thông tin đúng.
+- AC: Chỉ sửa được quán của mình.
+- AC: Thay đổi không lên app ngay mà chờ admin duyệt.
+
+**US-53.** Là chủ quán, tôi muốn nhận thông báo kết quả duyệt trong app, để không phải hỏi lại admin.
+- AC: Có chuông thông báo, phân biệt đã đọc/chưa đọc, bấm vào xem chi tiết kèm ghi chú.
+
+**US-54.** Là chủ quán, tôi muốn AI giúp viết lại mô tả hấp dẫn hơn, để thu hút khách.
+- AC: AI chỉ làm đẹp văn phong, không bịa thông tin; độ dài khoảng 200–300 từ.
+- AC: Mỗi ngày dùng tối đa 10 lần và thấy được số lần còn lại.
+
+**US-55.** Là chủ quán, tôi muốn quản lý thực đơn của quán, để khách xem món và giá.
+- AC: Chủ quán có quyền đọc, tạo, sửa menu; không có quyền xóa.
+
+## Epic 7 — Admin
+
+**US-60.** Là admin, tôi muốn thêm, sửa, ẩn, xóa POI, để dữ liệu luôn đúng.
+- AC: Khi sửa mô tả, hệ thống tự sinh lại audio cho 5 ngôn ngữ ưu tiên và tạm ẩn POI đến khi sẵn sàng.
+- AC: Không thể bật hiển thị công khai nếu chưa sẵn sàng tiếng Anh/audio.
+
+**US-61.** Là admin, tôi muốn theo dõi tiến độ sinh audio theo thời gian thực và có thể tạm dừng hoặc hủy, để kiểm soát tải hệ thống.
+- AC: Có thanh tiến độ cập nhật tự động; có nút Pause, Resume, Cancel.
+
+**US-62.** Là admin, tôi muốn duyệt đăng ký chủ quán và bài gửi POI, kèm ghi chú, để kiểm soát chất lượng nội dung.
+- AC: Duyệt thì tài khoản được xác minh; từ chối phải kèm `admin_note`.
+
+**US-63.** Là admin, tôi muốn xem nhật ký hành động, để truy vết khi có sự cố.
+- AC: Mỗi dòng có hành động, người thực hiện, tài nguyên và thời gian.
+
+**US-64.** Là admin, tôi muốn xem số liệu sử dụng ứng dụng, để hiểu hành vi du khách.
+- AC: Có số thiết bị online ẩn danh, thống kê theo giờ/ngày.
+
+**US-65.** Là admin, tôi muốn quản lý người dùng, để cấp hoặc thu hồi quyền.
+- AC: CRUD user; gán role.
+
+## Epic 8 — Super Admin
+
+**US-70.** Là super admin, tôi muốn tạo và chỉnh role, để phân quyền linh hoạt mà không sửa mã.
+- AC: Role lưu trong DB, gồm danh sách quyền; thay đổi có hiệu lực cho token mới.
+
+**US-71.** Là super admin, tôi muốn có tài khoản siêu quản trị được tạo an toàn khi cài hệ thống.
+- AC: Khi khởi động, hệ thống tạo role mặc định và super admin theo chế độ bootstrap cấu hình sẵn; cấu hình sai hoặc thiếu bí mật thì hệ thống từ chối chạy.
+
+## Epic 9 — Vận hành
+
+**US-80.** Là người vận hành, tôi muốn có endpoint kiểm tra sức khỏe, để giám sát và triển khai an toàn.
+- AC: `/health` cho biết tiến trình sống; `/health/ready` cho biết đã sẵn sàng nhận tải.
+
+**US-81.** Là người vận hành, tôi muốn khi server khởi động lại, các tác vụ audio dở dang được khôi phục, để không mất việc.
+- AC: Tác vụ được lưu snapshot; tác vụ quá 5 phút không có heartbeat được xử lý lại.
+
+## Ma trận truy vết (Story → Yêu cầu)
+
+| User Story | Yêu cầu liên quan |
+|---|---|
+| US-01..03 | FR-01..05, FR-39 |
+| US-10..12 | FR-10..15 |
+| US-20..23 | FR-20..27, FR-30..38 |
+| US-30..32 | FR-40..48 |
+| US-40 | FR-80..83 |
+| US-50..55 | FR-55, FR-60..66 |
+| US-60..65 | FR-33..36, FR-70..75 |
+| US-70..71 | FR-53..54 |
+| US-80..81 | NFR-11..13 |

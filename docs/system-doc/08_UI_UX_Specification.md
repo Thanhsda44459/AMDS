@@ -1,60 +1,132 @@
-# 08. Đặc Tả UI/UX — LinhUngGuide
+# 08 — UI/UX Specification (Màn hình và luồng giao diện)
 
-Tài liệu mô tả từng màn hình và luồng chuyển màn hình bằng lời, cho ba nhóm giao diện: Web app khách tham quan, giao diện nhân viên, và admin dashboard.
+> Sơ đồ luồng được thay bằng mô tả theo trình tự. Tài liệu gốc không có wireframe; phần bố cục chi tiết là **[Đề xuất]** dựa trên chức năng đã mô tả.
 
-## 1. Web App — Khách tham quan
+## 1. Nguyên tắc thiết kế
 
-### 1.1. Màn hình "Cổng vào" (Entry / Paywall)
-Là màn hình đầu tiên khách nhìn thấy ngay sau khi quét QR, khi chưa có access token hợp lệ. Bố cục đơn giản, gồm: logo/tên chùa ở trên cùng, một đoạn giới thiệu ngắn về app, và hai nút lớn dễ bấm bằng ngón tay cái: **"Thanh toán trực tuyến"** và **"Thanh toán tiền mặt"**. Không có menu điều hướng nào khác ở màn hình này, để tránh khách thoát ra ngoài luồng thanh toán bắt buộc.
+1. **Mobile-first:** du khách dùng điện thoại, vừa đi vừa xem.
+2. **Không bao giờ trống:** luôn có nội dung dự phòng; hiển thị dữ liệu cũ trong lúc tải mới.
+3. **Hạn chế thao tác:** thuyết minh tự động, không bắt buộc đăng nhập.
+4. **Trạng thái rõ ràng:** đang tải, đang dùng offline, nội dung thay thế, đã đạt hạn mức.
+5. **Đa ngôn ngữ:** mọi nhãn qua UI bundle; bố cục chịu được chuỗi dài (tiếng Đức/Việt) và chữ CJK **[Đề xuất]**.
+6. **Tôn trọng riêng tư:** hỏi consent rõ ràng, có lựa chọn từ chối.
 
-### 1.2. Màn hình "Đang chờ thanh toán" (Payment Pending)
-Xuất hiện sau khi khách chọn thanh toán online và quay lại từ Payoo, hoặc sau khi khách chọn tiền mặt và đang chờ nhân viên xác nhận. Hiển thị một biểu tượng đang tải (spinner), thông báo trạng thái rõ ràng ("Đang xác nhận thanh toán, vui lòng chờ trong giây lát" hoặc "Vui lòng đưa mã số phiên cho nhân viên tại quầy"), và với luồng tiền mặt có hiển thị to, rõ `session_id`/mã ngắn để khách dễ đọc và đưa cho nhân viên. Với luồng online, màn hình tự động kiểm tra lại trạng thái theo chu kỳ ngắn mà không cần khách thao tác gì thêm.
+## 2. Danh sách màn hình
 
-### 1.3. Màn hình chính — Bản đồ tham quan (Map Home)
-Màn hình trung tâm của app sau khi xác thực thành công. Gồm:
-- Bản đồ chiếm phần lớn diện tích màn hình, hiển thị: chấm định vị vị trí hiện tại của khách, các icon POI (icon POI trong bán kính gần được làm nổi bật bằng màu sắc/kích thước khác biệt so với POI ở xa).
-- Góc trên bên phải: biểu tượng hình tròn nhỏ để chọn ngôn ngữ — bấm vào mở ra danh sách cuộn dọc gồm tối thiểu 15 ngôn ngữ, mỗi ngôn ngữ hiển thị kèm quốc kỳ/tên bản ngữ để dễ nhận diện.
-- Góc dưới bên phải: nút nổi (floating action button) mở khung chat với chatbot.
-- Thanh điều hướng dưới cùng (tuỳ chọn): chuyển nhanh giữa "Bản đồ", "Lộ trình gợi ý", "Chat".
+### A. Ứng dụng công khai (Du khách)
 
-### 1.4. Thẻ thông tin POI (POI Detail Card)
-Xuất hiện dạng bottom sheet (trượt lên từ dưới) khi khách chạm vào một icon POI trên bản đồ, hoặc tự động mở khi khách bước vào phạm vi geofence của POI đó (theo UC-04). Nội dung gồm: tên POI theo ngôn ngữ đang chọn, ảnh minh hoạ, đoạn mô tả văn bản có thể cuộn nếu dài, và một nút phát/tạm dừng audio lớn, dễ thấy. Khi khách đổi ngôn ngữ trong lúc thẻ này đang mở, toàn bộ nội dung (văn bản + audio) cập nhật ngay lập tức mà không đóng thẻ lại.
+| Mã | Màn hình | Mục đích |
+|---|---|---|
+| P-01 | Splash | Hiển thị logo, tiến trình tải ban đầu |
+| P-02 | Chọn ngôn ngữ | Chọn vi, en, zh, ja, ko hoặc ngôn ngữ khác |
+| P-03 | Hỏi đồng ý analytics | Cho phép hoặc từ chối thu thập |
+| P-04 | Bản đồ chính | Bản đồ, POI, vị trí người dùng, nút định vị |
+| P-05 | Thẻ chi tiết POI | Tên, mô tả, ảnh, thực đơn, nghe/dừng thuyết minh |
+| P-06 | Bộ phát thuyết minh | Thanh/popup hiển thị POI đang đọc, dừng, đóng |
+| P-07 | Cài đặt | Ngôn ngữ, chế độ bản đồ, quyền riêng tư |
+| P-08 | Gói offline | Danh sách pack bản đồ và gói ngôn ngữ, tải, cập nhật, xóa, trạng thái |
+| P-09 | Trạng thái mạng/lỗi | Thông báo offline, thử lại, hết quota |
 
-### 1.5. Màn hình Lộ trình gợi ý (Route Suggestion)
-Hiển thị danh sách các POI theo thứ tự đề xuất dưới dạng các thẻ xếp dọc, mỗi thẻ có số thứ tự, tên POI, ảnh thu nhỏ, và khoảng cách ước tính tới điểm tiếp theo. Khách có thể chạm vào một thẻ để nhảy thẳng tới vị trí POI đó trên bản đồ. Có một điều khiển (ví dụ thanh trượt hoặc bộ chọn số) để khách tự tuỳ chỉnh số lượng POI muốn có trong lộ trình.
+### B. Cổng chủ quán
 
-### 1.6. Khung Chat (Chatbot)
-Mở dạng cửa sổ trượt lên chiếm khoảng 2/3 màn hình (để khách vẫn thấy một phần bản đồ phía sau, tạo cảm giác liền mạch). Gồm: lịch sử hội thoại trong phiên hiện tại (không cần đăng nhập lưu lại giữa các lượt tham quan khác nhau), ô nhập văn bản ở dưới cùng, và biểu tượng gửi. Câu trả lời của chatbot xuất hiện dạng bong bóng chat, kèm ảnh minh hoạ (nếu có) hiển thị ngay bên dưới đoạn text trả lời. Trong lúc chờ phản hồi, hiển thị hiệu ứng "đang gõ..." (typing indicator) để khách biết hệ thống đang xử lý.
+| Mã | Màn hình | Mục đích |
+|---|---|---|
+| O-01 | Đăng ký chủ quán | Form đăng ký kèm CCCD |
+| O-02 | Đăng nhập | Đăng nhập chung với admin |
+| O-03 | Trạng thái đăng ký | Chờ duyệt, đã duyệt, bị từ chối kèm ghi chú |
+| O-04 | Dashboard chủ quán | Tổng quan quán, số liệu của mình |
+| O-05 | Danh sách POI của tôi | Các quán đang sở hữu |
+| O-06 | Form POI | Sửa thông tin, ảnh, nút AI cải thiện mô tả, số lượt còn lại |
+| O-07 | Thực đơn | Thêm, sửa món |
+| O-08 | Submissions | Danh sách bài gửi và trạng thái duyệt |
+| O-09 | Thông báo | Chuông, danh sách, trang chi tiết |
 
-### 1.7. Nguyên tắc thiết kế UI/UX chung cho khách
-- Ưu tiên thao tác một tay: các nút quan trọng (chọn ngôn ngữ, mở chat, phát audio) đặt trong tầm với của ngón tay cái trên màn hình lớn.
-- Tương phản màu sắc rõ ràng, cỡ chữ đủ lớn để đọc ngoài trời nắng — phù hợp bối cảnh tham quan ngoài trời tại chùa.
-- Giao diện tối giản, hạn chế văn bản hướng dẫn dài dòng, ưu tiên biểu tượng (icon) trực quan để giảm rào cản ngôn ngữ ngay cả trước khi khách chọn được ngôn ngữ ưa thích.
-- Trạng thái tải (loading state) luôn được thể hiện rõ ràng ở mọi thao tác gọi mạng (phát audio, gửi câu hỏi chatbot) để khách không nhầm tưởng app bị treo.
+### C. Admin Dashboard
 
-## 2. Giao diện Nhân viên (Staff)
+| Mã | Màn hình | Mục đích |
+|---|---|---|
+| A-01 | Đăng nhập | Cookie httpOnly |
+| A-02 | Tổng quan | Số liệu chính, cảnh báo |
+| A-03 | Quản lý POI | Bảng, lọc, tạo, sửa, bật/tắt, xóa |
+| A-04 | Chi tiết/Form POI | Văn bản, ảnh, tọa độ, bán kính, độ ưu tiên |
+| A-05 | Tác vụ audio | Thanh tiến độ SSE, Pause, Resume, Cancel |
+| A-06 | Quản lý menu | CRUD món |
+| A-07 | Quản lý người dùng | CRUD, gán role |
+| A-08 | Quản lý role | Chọn tập quyền |
+| A-09 | Duyệt đăng ký chủ quán | Danh sách, chi tiết, duyệt/từ chối kèm ghi chú |
+| A-10 | Duyệt submission | So sánh đề xuất, duyệt/từ chối |
+| A-11 | Analytics | Biểu đồ giờ/ngày, số online ẩn danh |
+| A-12 | Quan sát vị trí runtime | Cửa sổ quan sát |
+| A-13 | Audit log | Bảng nhật ký |
+| A-14 | Hồ sơ/Đổi mật khẩu | Tài khoản cá nhân |
 
-### 2.1. Màn hình Đăng nhập
-Form đơn giản gồm ô tên đăng nhập, mật khẩu, nút đăng nhập — dùng chung layout với màn hình đăng nhập admin nhưng sau khi đăng nhập sẽ điều hướng theo `role` được trả về.
+## 3. Mô tả luồng giao diện
 
-### 2.2. Màn hình Xác nhận thanh toán tiền mặt
-Danh sách các phiên đang ở trạng thái chờ (`pending`), mỗi dòng hiển thị `session_id`, thời gian khách bắt đầu chờ, và một nút "Xác nhận đã thu tiền". Khi nhân viên bấm xác nhận, hệ thống hiển thị ngay mã ngắn (shortened_code) to, rõ ràng trên màn hình để nhân viên đọc/đưa cho khách, kèm nút "Sao chép" để tiện thao tác nếu có màn hình phụ hiển thị cho khách xem trực tiếp.
+### 3.1 Luồng khách lần đầu
+Mở app, hiện **Splash** (P-01). Sau đó hiện **Chọn ngôn ngữ** (P-02). Chọn xong, nếu chưa từng trả lời, hiện **Hỏi đồng ý** (P-03). Trong lúc này app tải dữ liệu nền. Khi đủ dữ liệu, vào **Bản đồ chính** (P-04). Từ đây du khách có thể chạm POI để mở **Thẻ chi tiết** (P-05), hoặc đi bộ để **Bộ phát thuyết minh** (P-06) tự bật lên khi vào vùng POI.
 
-## 3. Admin Dashboard
+### 3.2 Luồng khách quay lại
+Mở app, Splash rất ngắn vì dữ liệu cũ đã có trong máy, vào thẳng Bản đồ. Ngôn ngữ đã chọn được nhớ nên bỏ qua bước chọn.
 
-### 3.1. Màn hình Đăng nhập
-Tương tự staff, nhưng chỉ tài khoản có `role = admin` mới được điều hướng vào các trang quản trị đầy đủ.
+### 3.3 Luồng thuyết minh tự động
+Du khách đang ở Bản đồ chính. Khi vào vùng POI đủ 3 giây, bộ phát xuất hiện ở dưới màn hình và bắt đầu đọc. Có nút dừng/đóng. Khi đọc xong, bộ phát tự đóng. Nếu đang chờ audio phải tạo (2–8 giây), bộ phát hiển thị trạng thái "đang chuẩn bị" thay vì im lặng **[Đề xuất]**.
 
-### 3.2. Trang Tổng quan (Overview / Monitoring Dashboard)
-Trang mặc định sau khi admin đăng nhập. Bố cục dạng lưới các thẻ số liệu (cards): số phiên đang hoạt động, doanh thu hôm nay theo từng hình thức thanh toán, tình trạng hoạt động của backend (biểu tượng xanh/vàng/đỏ), số câu hỏi chatbot đã xử lý. Bên dưới là các biểu đồ đơn giản (dạng cột/đường) thể hiện xu hướng lượt khách theo giờ trong ngày và danh sách top POI được xem nhiều nhất. Toàn bộ số liệu tự làm mới theo chu kỳ ngắn mà không cần admin bấm tải lại trang.
+### 3.4 Luồng đổi ngôn ngữ
+Từ Bản đồ, mở **Cài đặt** (P-07), chọn ngôn ngữ khác. Giao diện hiển thị trạng thái đang chuẩn bị, vẫn dùng ngôn ngữ cũ (hoặc tiếng Anh) cho đến khi cả nội dung và nhãn UI đều sẵn sàng, rồi đổi cùng lúc.
 
-### 3.3. Trang Quản lý POI
-Danh sách POI dạng bảng, mỗi dòng gồm: tên, trạng thái hoạt động (đang hiển thị/đã ẩn), trạng thái pipeline dịch/TTS (một cụm chấm màu nhỏ thể hiện số ngôn ngữ đã hoàn tất trên tổng số ngôn ngữ). Có nút "Thêm POI mới" mở ra một form chi tiết gồm: tên, mô tả gốc (khung nhập văn bản dài), vị trí (nhập toạ độ trực tiếp hoặc chọn điểm trên một bản đồ nhỏ nhúng trong form), bán kính phạm vi, tải ảnh thumbnail. Sau khi lưu, dòng POI đó hiển thị trạng thái "Đang xử lý dịch/TTS" và tự cập nhật thành "Sẵn sàng" khi pipeline hoàn tất, không cần admin tải lại trang thủ công.
+### 3.5 Luồng tải gói offline
+Từ Cài đặt, mở **Gói offline** (P-08). Thấy hai khối: gói bản đồ (Quận 4, TP.HCM) và gói của ngôn ngữ hiện tại. Bấm tải, hiển thị 4 bước lần lượt: bản đồ, POI, ảnh, audio, mỗi bước có tiến độ. Nếu hết dung lượng, hiển thị thông báo và app tự dọn cache tạm. Xong, hiển thị "đã sẵn sàng offline". Nếu có phiên bản mới hiển thị "có bản cập nhật"; nếu lỗi checksum hiển thị "cần sửa gói".
 
-### 3.4. Trang Quản lý tài khoản
-Danh sách tài khoản nhân viên/quản trị viên, kèm nút tạo tài khoản mới với việc chọn vai trò (`admin`/`staff`) và khả năng khoá/mở khoá một tài khoản.
+### 3.6 Luồng chủ quán
+**Đăng ký** (O-01), sau đó **Đăng nhập** (O-02). Vì chưa được duyệt, chủ quán được đưa tới **Trạng thái đăng ký** (O-03) và chỉ xem được trang này cùng thông báo. Khi admin duyệt, chủ quán nhận thông báo, lần đăng nhập sau vào **Dashboard** (O-04). Từ đó vào danh sách POI (O-05), mở form (O-06), bấm AI cải thiện mô tả, bấm gửi. Bài gửi hiện ở **Submissions** (O-08) với trạng thái chờ duyệt. Kết quả duyệt xuất hiện ở **Thông báo** (O-09).
 
-### 3.5. Nguyên tắc thiết kế UI/UX cho admin/staff
-- Ưu tiên hiển thị dữ liệu dạng bảng, số liệu rõ ràng, phù hợp thao tác trên máy tính để bàn/laptop (khác với web app khách vốn ưu tiên di động).
-- Mọi hành động có tác động dữ liệu quan trọng (xoá/ẩn POI, xác nhận thanh toán) đều có bước xác nhận lại (confirm dialog) để tránh thao tác nhầm.
-- Trạng thái xử lý bất đồng bộ (pipeline dịch/TTS) luôn được phản ánh trực quan để admin không cần đoán hệ thống có đang chạy hay không.
+### 3.7 Luồng admin duyệt
+Đăng nhập (A-01), vào **Tổng quan** (A-02) với số lượng đơn chờ. Mở **Duyệt đăng ký** (A-09) hoặc **Duyệt submission** (A-10), xem chi tiết, chọn duyệt hoặc từ chối (từ chối bắt buộc nhập ghi chú). Quay lại danh sách.
+
+### 3.8 Luồng admin sửa POI
+Mở **Quản lý POI** (A-03), chọn POI, vào **Form POI** (A-04), lưu. Giao diện thông báo "đang sinh audio", chuyển sang **Tác vụ audio** (A-05) để xem tiến độ. POI chuyển trạng thái hoạt động trở lại khi xong.
+
+## 4. Bố cục từng màn hình chính (mô tả)
+
+### P-04 Bản đồ chính
+- Toàn màn hình là bản đồ.
+- Góc trên: thanh nhỏ hiển thị trạng thái (online/offline, chế độ bản đồ) và nút cài đặt.
+- Các điểm POI dạng ghim; ghim POI đang thuyết minh được làm nổi bật.
+- Góc dưới phải: nút định vị.
+- Dưới cùng: vùng dành cho bộ phát thuyết minh (ẩn khi không phát).
+
+### P-05 Thẻ chi tiết POI
+- Dạng bảng trượt từ dưới lên.
+- Từ trên xuống: dải ảnh, tên, nhãn "nội dung thay thế" nếu `is_fallback`, mô tả, nút nghe, thực đơn (món và giá).
+
+### P-08 Gói offline
+- Mỗi gói là một thẻ gồm tên, dung lượng, phiên bản, nút hành động chính (Tải / Cập nhật / Sửa / Xóa) và thanh tiến độ.
+
+### A-05 Tác vụ audio
+- Danh sách tác vụ, mỗi dòng có POI, ngôn ngữ, trạng thái (màu theo trạng thái), thanh tiến độ, nút Pause/Resume/Cancel.
+
+## 5. Trạng thái giao diện cần xử lý
+
+| Tình huống | Hiển thị |
+|---|---|
+| Đang tải lần đầu | Splash với tiến trình |
+| Mất mạng | Nhãn "offline", vẫn dùng dữ liệu đã lưu |
+| Nội dung dùng ngôn ngữ thay thế | Nhãn nhỏ trên thẻ POI |
+| Từ chối quyền định vị | Hướng dẫn bật quyền; vẫn xem bản đồ và chọn POI thủ công |
+| Định vị không đạt trong 15 giây | Thông báo, cho thử lại |
+| Hạn mức AI hết | Vô hiệu hóa nút, hiển thị thời điểm reset |
+| 429 từ on-demand | Chờ và thử lại ngầm, không báo lỗi gắt |
+| Hết dung lượng khi tải gói | Thông báo và dọn tự động |
+| Owner chưa xác minh | Chỉ thấy O-03 và thông báo |
+| Thiếu quyền (admin) | Ẩn mục menu hoặc hiện trang 403 |
+
+## 6. Khả năng tiếp cận và hiển thị (đề xuất)
+
+- Mọi nút có nhãn văn bản hoặc `aria-label`.
+- Thuyết minh có thể dừng bằng một chạm; hiển thị phụ đề văn bản mô tả POI.
+- Độ tương phản đạt WCAG AA; cỡ chữ tối thiểu 14 px.
+- Vùng chạm tối thiểu 44 px.
+
+## 7. Màu sắc và nhận diện (theo tài liệu thuyết trình)
+
+Màu chủ đạo cam đậm (`#e65100`), màu nhấn xanh ngọc (`#00838f`), nền sáng, chữ Segoe UI/hệ thống. Đây là phong cách trang trình bày; có thể dùng làm tham chiếu cho app.

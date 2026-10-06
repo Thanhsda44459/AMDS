@@ -1,74 +1,135 @@
-# 05. Kiến Trúc Hệ Thống — LinhUngGuide
+# 05 — System Architecture (Kiến trúc hệ thống)
 
-Tài liệu mô tả kiến trúc bằng lời, giải thích vai trò từng thành phần và cách chúng giao tiếp với nhau, thay cho sơ đồ trực quan.
+> Sơ đồ được thay bằng mô tả lời theo từng tầng và từng luồng dữ liệu.
 
-## 1. Tổng quan lựa chọn công nghệ
+## 1. Tổng quan
 
-| Lớp | Công nghệ được chọn | Lý do chọn |
+Hệ thống là **modular monolith** ở phía backend và **PWA offline-first** ở phía frontend.
+
+Hình dung theo chiều từ người dùng vào trong:
+
+1. **Trình duyệt/PWA của người dùng** chạy ứng dụng React. Giữa ứng dụng và mạng có **Service Worker** làm lớp chặn yêu cầu và cache. Dữ liệu lâu dài nằm trong **IndexedDB** và **Cache API**.
+2. Yêu cầu đi qua mạng tới **một tiến trình backend FastAPI** duy nhất, trong đó mười router chia ranh giới theo nghiệp vụ.
+3. Backend dùng chung **MongoDB** (dữ liệu chính), **Redis** (trạng thái tạm thời, phối hợp), và **kho tệp tĩnh/runtime** (audio, ảnh, bản đồ), có thể thay bằng kho tương thích S3.
+4. Backend gọi ra **dịch vụ ngoài** khi cần: Edge-TTS, Google Translate (qua deep-translator), Gemini/ProxyPal, MapTiler, OpenWeather (tùy chọn).
+
+## 2. Các thành phần
+
+### 2.1 Frontend (PWA)
+
+| Thành phần | Công nghệ | Vai trò |
 |---|---|---|
-| Frontend (Web app khách) | ReactJS 18 + TypeScript, Vite, TailwindCSS, Zustand, React Router, react-leaflet (Leaflet.js) | Hệ sinh thái phổ biến, cộng đồng lớn, dễ triển khai PWA, Leaflet nhẹ và đủ dùng cho bản đồ khuôn viên một địa điểm (không cần bộ máy vector-tile phức tạp) |
-| Bản đồ nền | OpenStreetMap / MapTiler (gói miễn phí) | Miễn phí hoặc chi phí rất thấp so với Google Maps, đủ chi tiết cho khu vực Đà Nẵng |
-| Admin & Staff dashboard | Cùng codebase React, tách route riêng (`/admin`, `/staff`), UI dùng thêm thư viện component (ví dụ Ant Design/MUI) | Tận dụng lại hạ tầng frontend, giảm chi phí bảo trì hai codebase riêng biệt |
-| Backend API | Python FastAPI (bất đồng bộ) | Hiệu năng tốt với I/O bất đồng bộ (gọi AI, dịch thuật, TTS song song), tài liệu tự sinh (OpenAPI/Swagger) hỗ trợ tài liệu API, hệ sinh thái Python phù hợp để tích hợp AI |
-| Giao tiếp Backend ↔ CSDL | Motor (driver MongoDB bất đồng bộ) | Khớp với mô hình async của FastAPI |
-| CSDL chính | MongoDB Atlas | Lưu dữ liệu dạng tài liệu (document) linh hoạt, phù hợp với cấu trúc POI có nhiều bản dịch lồng nhau; có gói miễn phí cho môi trường đồ án |
-| CSDL vector (cho chatbot RAG) | Azure AI Search (chỉ mục vector) | Tách biệt tìm kiếm ngữ nghĩa khỏi CSDL vận hành chính, tối ưu cho truy vấn tương đồng vector ở quy mô lớn |
-| Cache & phiên tạm | Redis (Azure Cache for Redis) | Lưu mã ngắn (shortened_code) cho luồng thanh toán tiền mặt với thời gian sống ngắn, đúng theo luồng đã mô tả trong PRD gốc |
-| Dịch vụ AI sinh câu trả lời | Azure OpenAI Service — GPT-4o mini | Cân bằng giữa chi phí và chất lượng, đủ tốt cho tác vụ hỏi đáp có ngữ cảnh (RAG), tương thích hệ sinh thái Azure |
-| Dịch vụ embedding | Azure OpenAI — text-embedding-3-small | Dùng chung nhà cung cấp với mô hình sinh câu trả lời, đơn giản hoá việc quản lý khoá API |
-| Dịch thuật tự động | Azure AI Translator | Hỗ trợ hơn 100 ngôn ngữ, chất lượng ổn định, có SDK/REST API dễ tích hợp vào pipeline bất đồng bộ |
-| Chuyển văn bản thành giọng nói (TTS) | Azure Cognitive Services Speech (Neural TTS) | Giọng đọc tự nhiên, hỗ trợ đa ngôn ngữ tương ứng với danh sách ngôn ngữ dịch thuật, cùng hệ sinh thái Azure giúp giảm độ phức tạp tích hợp |
-| Lưu trữ file (audio, ảnh) | Azure Blob Storage | Lưu trữ đối tượng chi phí thấp, có CDN đi kèm để phục vụ file tĩnh nhanh |
-| Cổng thanh toán | Payoo Payment Gateway | Được chỉ định trong PRD gốc, phù hợp thanh toán nội địa Việt Nam (QR, thẻ ATM, ví điện tử) |
-| Xác thực | JWT (access token), mật khẩu tài khoản quản trị băm bằng bcrypt | Không trạng thái (stateless), dễ xác thực phân tán giữa các service backend |
-| Sinh mã QR | Thư viện `qrcode` (Python) | Đơn giản, không tốn chi phí, đủ dùng để sinh QR tại cổng vào |
-| Hosting Backend | Azure App Service / Azure Container Apps | Tự động scale, tích hợp tốt với các dịch vụ Azure khác đã chọn (OpenAI, Translator, Speech, Blob Storage) |
-| Hosting Frontend | Azure Static Web Apps | Phù hợp ứng dụng SPA/PWA tĩnh, có CDN toàn cầu, tích hợp CI/CD sẵn |
-| CI/CD | GitHub Actions | Miễn phí cho repo cá nhân/đồ án, tích hợp tốt với Azure |
-| Giám sát | Azure Application Insights + Grafana (tuỳ chọn cho biểu đồ tuỳ biến) | Theo dõi log tập trung, cảnh báo tự động, đủ cho quy mô một đồ án pilot |
+| Khung UI | React 19.2, React Router (catch-all) | Hiển thị màn hình, định tuyến |
+| Build | Vite 7 + plugin PWA, Workbox `injectManifest` | Đóng gói, sinh Service Worker |
+| State | Zustand (ví dụ `poiStore`) | Lưu trạng thái ứng dụng |
+| Bản đồ | MapLibre GL JS, giao thức `pmtiles://` | Hiển thị vector map cloud/offline |
+| Địa lý | Turf.js | Tính khoảng cách cho geofence |
+| Offline | Service Worker, `idb` (IndexedDB), Cache API | 4 lớp phòng thủ offline |
 
-> Nguyên tắc chọn công nghệ: ưu tiên một hệ sinh thái đám mây thống nhất (Azure) để giảm số lượng nhà cung cấp cần quản lý khoá/billing riêng lẻ, đồng thời giữ các thành phần mã nguồn mở, chi phí thấp ở tầng frontend/bản đồ để tối ưu ngân sách đồ án.
+Các module logic chính trong frontend:
 
-## 2. Các thành phần chính và vai trò
+- **LocationService**: theo dõi vị trí liên tục, throttle 5 giây, hàm lấy vị trí tốt nhất có thể.
+- **GeofenceEngine**: phát hiện vào/ra vùng POI, debounce 3 giây, cooldown 5 phút, vòng reconcile 5 giây.
+- **NarrationEngine + AudioQueueManager**: hàng đợi một ô, phát có fallback 4 tầng.
+- **useGeofence**: gắn geofence vào React, điều phối prefetch nền.
+- **LanguageHotsetService**: chuẩn bị hotset theo ngôn ngữ (10 POI, 1,5 km, 3 POI bắt buộc).
+- **Startup coordinator và startupNetworkProbe**: tách trạng thái sẵn sàng giữa nội dung và UI bundle; thăm dò mạng.
+- **AudioPackService, MapPackService**: tải, xác thực, kích hoạt gói offline.
+- **mapConfig**: chọn chế độ bản đồ Cloud, Offline hoặc Hybrid.
+- **db.js**: truy cập IndexedDB `Quan4DB v2`.
 
-### 2.1. Web App (Client)
-Là một Progressive Web App (PWA) chạy hoàn toàn trên trình duyệt di động. Sau khi khách xác thực thành công (có access token), toàn bộ dữ liệu POI (mô tả đa ngôn ngữ, toạ độ, bán kính, đường dẫn audio) được tải về một lần duy nhất và lưu trong bộ nhớ của ứng dụng. Từ thời điểm đó, mọi thao tác xem POI, đổi ngôn ngữ, xem lộ trình diễn ra hoàn toàn phía client mà không cần gọi lại server — đúng theo nguyên tắc "Key Logic" trong PRD gốc. Chỉ có hai loại yêu cầu tiếp tục được gửi lên server sau khi xác thực: (1) câu hỏi gửi tới chatbot, và (2) file audio được tải theo yêu cầu (khi khách thực sự bấm nghe) thay vì tải toàn bộ audio ngay từ đầu, nhằm giảm dung lượng tải ban đầu.
+### 2.2 Backend (FastAPI)
 
-### 2.2. Authorization Service (Dịch vụ xác thực & thanh toán)
-Thành phần trong backend chịu trách nhiệm: sinh và xác minh auth_code, giao tiếp với Payoo cho luồng online, phối hợp với nhân viên cho luồng tiền mặt (lưu mã ngắn vào Redis), và cấp/kiểm tra access token (JWT) cho mọi yêu cầu tiếp theo từ client.
+Công nghệ: FastAPI (async), Motor (MongoDB async), PyJWT (HS256), bcrypt, cryptography (Fernet), Redis client, Edge-TTS, deep-translator, SDK Gemini hoặc cổng ProxyPal.
 
-### 2.3. Admin Dashboard & Staff Dashboard
-Hai giao diện quản trị (có thể tách route trong cùng một ứng dụng React hoặc build riêng), giao tiếp với backend qua các API riêng có phân quyền:
-- Admin: toàn quyền quản lý POI, xem giám sát hệ thống, quản lý tài khoản nhân viên.
-- Staff: chỉ có quyền xác nhận thanh toán tiền mặt và xem danh sách phiên đang chờ.
+Mười router được mount:
 
-### 2.4. Cloud Backend
-Là lớp API trung tâm (FastAPI), điều phối toàn bộ logic nghiệp vụ: xác thực, quản lý POI, điều phối chatbot, kích hoạt data pipeline dịch/TTS, và cung cấp số liệu cho dashboard giám sát. Backend giao tiếp với các dịch vụ AI của Azure OpenAI (sinh câu trả lời, embedding), Azure AI Translator, Azure Speech, và với CSDL/Storage.
+| Router | Trách nhiệm |
+|---|---|
+| content | CRUD POI, đồng bộ delta, nearby, hydrate bản địa hóa, cổng kích hoạt, menu |
+| audio | Edge-TTS, GoogleTranslator, task manager, danh sách giọng, pack manifest, SSE tác vụ |
+| admin | Xác thực cookie, RBAC, người dùng, role, duyệt đăng ký/submission, audit log |
+| owner | Cổng chủ quán: POI của mình, submission, thông báo, trạng thái đăng ký |
+| ai_advisor | Cải thiện mô tả bằng AI, quota theo ngày |
+| analytics | API thu thập có consent, hiện diện qua Redis, read model trong Mongo |
+| localization | On-demand, hotset, warmup, cổng "sẵn sàng tiếng Anh công khai" |
+| maps | Manifest tĩnh-first, PMTiles, glyph, sprite, chống path traversal |
+| runtime_observability | Ingest vị trí công khai (tách riêng), rate limit, cửa sổ quan sát cho admin |
+| ui_i18n | UI bundle theo locale, `source_hash`, trạng thái pending/ready, dịch long-tail |
 
-### 2.5. Data Pipeline (Dịch thuật & TTS tự động)
-Một tiến trình chạy bất đồng bộ (dưới dạng background task hoặc hàng đợi công việc nhẹ trong nội bộ backend), được kích hoạt mỗi khi một POI được tạo mới hoặc mô tả gốc được chỉnh sửa. Pipeline thực hiện tuần tự: dịch văn bản sang toàn bộ ngôn ngữ hỗ trợ → sinh audio cho từng bản dịch → lưu audio vào Blob Storage → cập nhật bản ghi POI trong CSDL với các đường dẫn tương ứng → cập nhật chỉ mục vector để nội dung mới khả dụng cho chatbot.
+Ngoài ra: `/static` (tệp tĩnh), `/health`, `/health/ready`.
 
-### 2.6. Chatbot Service (RAG)
-Thành phần backend xử lý câu hỏi của khách: chuyển câu hỏi thành vector embedding, tìm kiếm ngữ cảnh liên quan trong Azure AI Search, gửi ngữ cảnh cùng câu hỏi tới mô hình GPT-4o mini để sinh câu trả lời, rồi trả kết quả về cho client.
+Mỗi domain tổ chức theo mẫu **router → service → store**, dùng chung tiến trình, DB và Redis nhưng ranh giới rõ ràng.
 
-### 2.7. Cơ sở dữ liệu
-- **MongoDB Atlas**: lưu trữ dữ liệu vận hành — POI (toạ độ, bán kính, mô tả theo từng ngôn ngữ, đường dẫn audio, thumbnail), phiên tham quan (session), tài khoản quản trị/nhân viên, nhật ký giao dịch thanh toán.
-- **Azure AI Search (vector index)**: lưu chỉ mục vector của nội dung POI và tài liệu bổ sung, phục vụ riêng cho việc tìm kiếm ngữ nghĩa của chatbot, tách biệt khỏi CSDL vận hành để không ảnh hưởng hiệu năng đọc/ghi thông thường.
-- **Redis**: lưu tạm mã ngắn (shortened_code) trong luồng thanh toán tiền mặt, với thời gian sống (TTL) ngắn để tự động dọn dẹp.
+### 2.3 Cơ sở dữ liệu và lưu trữ
 
-### 2.8. Lưu trữ đối tượng (Blob Storage)
-Lưu toàn bộ file audio đã sinh (theo từng ngôn ngữ, từng POI) và hình ảnh thumbnail/minh hoạ. Các file này được phục vụ qua CDN để tải nhanh trên thiết bị di động.
+- **MongoDB**: kho dữ liệu chính (chi tiết ở `06_Database_Design.md`). Yêu cầu hỗ trợ transaction (kiểm tra khi khởi động bằng `assert_transaction_capability()`, tức cần replica set).
+- **Redis**: hiện diện người dùng ẩn danh (sliding window), rate limit analytics, khóa phối hợp.
+- **Kho media/runtime**: thư mục tĩnh chứa audio MP3, ảnh, gói bản đồ (`backend/app/static/maps/`, đổi bằng biến môi trường `MAP_PACK_DATA_DIR`). Có thể dùng backend tương thích S3, khi đó khi khởi động có kiểm tra sức khỏe kho (`media_storage.check_backend_health()`).
 
-### 2.9. Cổng thanh toán Payoo
-Dịch vụ bên thứ ba xử lý thanh toán trực tuyến. Backend chỉ gửi yêu cầu tạo liên kết thanh toán và nhận webhook xác nhận, không xử lý trực tiếp thông tin nhạy cảm của thẻ/tài khoản khách hàng.
+### 2.4 Dịch vụ ngoài
 
-### 2.10. Monitoring Stack
-Azure Application Insights thu thập log và số liệu hiệu năng từ backend (thời gian phản hồi API, tỉ lệ lỗi, số request). Dữ liệu này được tổng hợp và hiển thị trong Monitoring Dashboard của admin, kết hợp thêm số liệu nghiệp vụ (lượt xem POI, số câu hỏi chatbot) được backend tự tính toán và lưu định kỳ vào MongoDB.
+Xem `10_External_Services.md`.
 
-## 3. Nguyên tắc thiết kế xuyên suốt
+## 3. Trình tự khởi động backend (theo tầng)
 
-1. **Nạp dữ liệu một lần (load-once)**: Toàn bộ dữ liệu văn bản/POI được nạp về frontend ngay sau xác thực; chỉ audio được tải theo yêu cầu nhằm cân bằng giữa nguyên tắc "không gọi lại API" của PRD gốc và việc kiểm soát dung lượng tải ban đầu.
-2. **Bất đồng bộ hoá các tác vụ nặng**: Dịch thuật, sinh TTS, cập nhật chỉ mục vector đều chạy nền, không chặn thao tác của quản trị viên.
-3. **Tách bạch quyền hạn theo vai trò**: Mọi endpoint quản trị đều kiểm tra vai trò (role) được mã hoá trong JWT trước khi xử lý, hạn chế nhân viên truy cập chức năng vượt phạm vi công việc.
-4. **Một hệ sinh thái đám mây thống nhất**: Việc dùng Azure cho AI, dịch thuật, TTS, lưu trữ và hosting giúp đơn giản hoá cấu hình bảo mật (dùng chung managed identity/khoá quản lý tập trung) và giảm số lượng nhà cung cấp cần theo dõi chi phí.
-5. **Khả năng mở rộng cho tương lai**: Kiến trúc tách rõ Chatbot Service, Authorization Service và Data Pipeline thành các module độc lập trong backend, để có thể tách thành các service riêng biệt (microservices) nếu hệ thống được nhân rộng ra nhiều địa điểm tham quan khác trong tương lai, dù điều này nằm ngoài phạm vi hiện thực hoá của đồ án.
+1. **Bảo mật và bootstrap guard:** kiểm tra `JWT_SECRET`, `REFRESH_TOKEN_SECRET`, `SECRET_KEY` ở môi trường không phải dev; kiểm tra `SUPERADMIN_BOOTSTRAP_MODE`. Sai hoặc thiếu thì dừng ngay.
+2. **Sẵn sàng DB, cache, media:** kết nối MongoDB, xác nhận có transaction, nếu dùng S3 thì kiểm tra sức khỏe.
+3. **Seeding và chuẩn bị runtime:** tạo role mặc định, tạo super admin, kiểm tra hoặc tạo thư mục lưu trữ.
+4. **Phục hồi và worker nền:** làm mới trạng thái transaction, bật vòng kiểm tra sẵn sàng, khôi phục tác vụ audio sau restart, nạp tác vụ gần đây, bật vòng bảo trì, tạo index cho quan sát runtime, rồi bật worker analytics và worker dọn media.
+5. **Gắn router:** mount 10 router, `/static`, `/health`, `/health/ready`.
+
+## 4. Luồng dữ liệu chính (mô tả bằng lời)
+
+### 4.1 Mở app và tải dữ liệu
+Trình duyệt tải trang, Service Worker được đăng ký. Giao diện đọc ngay snapshot từ IndexedDB để hiển thị. Cùng lúc, frontend gọi `GET /poi/load-all` kèm ETag; backend so khớp phiên bản dataset, trả đầy đủ hoặc chỉ phần thay đổi và danh sách POI bị xóa. Frontend ghi lại vào IndexedDB. Service Worker cache phản hồi này theo chiến lược NetworkFirst (chờ mạng 8 giây, TTL 15 phút).
+
+### 4.2 Thuyết minh theo vị trí
+Dịch vụ vị trí đẩy tọa độ mỗi 5 giây vào bộ máy geofence. Bộ máy xác nhận ENTER, chọn POI tốt nhất, chuyển cho bộ phát. Bộ phát hỏi Service Worker audio đã có sẵn chưa; nếu chưa, gọi backend on-demand, rồi TTS stream, rồi cuối cùng dùng giọng của thiết bị.
+
+### 4.3 Sinh audio phía backend
+Khi admin lưu POI, router content ghi bản gốc tiếng Việt, rồi giao cho trình quản lý tác vụ audio. Trình quản lý chạy tối đa 3 tác vụ song song: dịch văn bản, kiểm tra cache MD5 trên đĩa, nếu chưa có thì gọi Edge-TTS, lưu MP3, upsert bản địa hóa vào MongoDB, cập nhật trạng thái và đẩy tiến độ qua SSE tới trang admin. Trạng thái tác vụ được lưu vào MongoDB để phục hồi.
+
+### 4.4 Gói offline
+Frontend gọi manifest (audio, map) để biết danh sách tệp, kích thước và SHA-256. Tải từng tệp, kiểm tra hash, lưu vào cache riêng của pack, rồi nhắn Service Worker kích hoạt để ưu tiên đọc từ pack.
+
+### 4.5 Duyệt nội dung chủ quán
+Chủ quán gửi submission vào `poi_submissions`; admin duyệt; hệ thống cập nhật `poi`, tăng phiên bản dataset, xếp việc sinh audio, tạo `owner_notifications`. Thiết bị của du khách thấy thay đổi ở lần đồng bộ delta kế tiếp.
+
+## 5. Chiến lược cache và offline (4 lớp)
+
+1. **Service Worker (Workbox):** POI NetworkFirst; audio CacheFirst theo từng ngôn ngữ; ảnh và chunk tùy chọn CacheFirst có dọn khi hết quota; gói bản đồ có cache bất biến riêng.
+2. **Phân mảnh ngôn ngữ và đồng bộ build:** mỗi ngôn ngữ một cache, tối đa 300 tệp, tối đa 3 ngôn ngữ, LRU, ghim ngôn ngữ đang dùng; xóa chunk cũ khi build đổi.
+3. **IndexedDB:** `pois_by_lang` và UI bundle; thứ tự dự phòng chọn, en, vi.
+4. **Offline Pack:** bản đồ, POI, ảnh, audio; cài tuần tự, kiểm tra SHA-256, cache tách biệt, hy sinh runtime cache khi đầy.
+
+Thông điệp giữa frontend và Service Worker: `SET_ACTIVE_LANGUAGE`, `APP_BUILD_SYNC`, `AUDIO_PACK_ACTIVATE`, `AUDIO_PACK_REMOVE_LANG`, `MAP_PACK_ACTIVATE`, `MAP_PACK_DEACTIVATE`.
+
+## 6. Ba chế độ bản đồ (chuỗi bốn tầng)
+
+1. **Chọn chế độ:** `mapConfig` quyết định Cloud, Offline hoặc Hybrid theo trạng thái mạng và pack đã kích hoạt.
+2. **Công bố pack:** backend phục vụ `/static/maps/*` và lớp tương thích `/api/v1/maps/*`; manifest nêu phiên bản, checksum, scope, ngày nguồn, bbox, URL tuyệt đối.
+3. **Kích hoạt pack:** frontend tải, kiểm tra SHA-256, kích hoạt; cập nhật an toàn hoặc thay thế khi khác scope.
+4. **Hiển thị:** MapLibre đọc từ cache cục bộ qua `pmtiles://`; hybrid giữ cloud làm dự phòng và thăm dò dựa trên style cloud đang dùng.
+
+## 7. Ranh giới tin cậy và bảo mật kiến trúc
+
+- Trình duyệt không đọc được token (cookie httpOnly).
+- Backend là nơi duy nhất thực thi quyền; JWT mang danh sách quyền.
+- PII chỉ giải mã khi cần và không rò rỉ khi lỗi.
+- Đường dẫn tệp bản đồ phải nằm trong thư mục gốc cho phép.
+- Kênh analytics (cần consent) tách khỏi kênh quan sát vị trí runtime.
+
+## 8. Các mẫu thiết kế được áp dụng
+
+Modular Monolith; Audio lai 4 tầng; Fallback nội dung 3 tầng (chọn, en, vi); Quốc tế hóa hai làn (nội dung và UI); Phân mảnh cache theo ngôn ngữ; Geofence reconcile; RBAC động; Analytics có consent; Cookie httpOnly; PWA offline-first; Theo dõi tiến độ bằng SSE; Mã hóa PII khi lưu.
+
+## 9. Thuộc tính chất lượng và cách đạt được
+
+| Thuộc tính | Cách đạt |
+|---|---|
+| Chạy offline | 4 lớp cache, pack, IndexedDB |
+| Chi phí thấp | Công cụ miễn phí, cache MD5 chống sinh lại |
+| Chịu lỗi | Fallback nhiều tầng, backoff, phục hồi tác vụ |
+| Mở rộng | Ranh giới router/service/store cho phép tách service sau này |
+| Bảo mật | Cookie httpOnly, RBAC, mã hóa PII, rate limit, path guard |

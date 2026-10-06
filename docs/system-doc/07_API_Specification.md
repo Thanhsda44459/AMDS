@@ -1,103 +1,139 @@
-# 07. Đặc Tả API — LinhUngGuide
+# 07 — API Specification (Giao tiếp Frontend ↔ Backend)
 
-Backend cung cấp REST API (JSON qua HTTPS), theo chuẩn FastAPI/OpenAPI. Mọi endpoint yêu cầu xác thực đều dùng header `Authorization: Bearer <access_token>`. Tài liệu mô tả từng nhóm endpoint bằng lời: mục đích, đầu vào, đầu ra, và các mã lỗi chính — không vẽ sơ đồ luồng (đã có ở tài liệu 04).
+## 0. Quy ước chung
 
-## 1. Quy ước chung
-- Base URL: `https://api.linhungguide.vn/v1` (môi trường sản xuất) — trong đồ án dùng domain tạm cấp bởi Azure App Service.
-- Định dạng phản hồi lỗi thống nhất: đối tượng JSON gồm `error_code`, `message`, `details` (tuỳ chọn).
-- Mã trạng thái HTTP dùng đúng ngữ nghĩa chuẩn: `200` thành công, `201` tạo mới thành công, `400` dữ liệu đầu vào sai, `401` chưa xác thực/token không hợp lệ, `403` không đủ quyền, `404` không tìm thấy, `409` xung đột trạng thái (ví dụ thanh toán đã được xác nhận trước đó), `429` vượt giới hạn tần suất, `500` lỗi hệ thống.
+- **Base URL:** `/api/v1` (tiền tố của các route nêu trong tài liệu gốc). Tệp tĩnh ở `/static`. Kiểm tra sức khỏe ở `/health`, `/health/ready`.
+- **Định dạng:** JSON (trừ MP3 và tệp bản đồ).
+- **Xác thực:** cookie httpOnly (`access_token`, `refresh_token`); có thể dùng `Authorization: Bearer <token>` cho client không phải trình duyệt.
+- **Lỗi chuẩn:** 400 dữ liệu sai; 401 chưa đăng nhập; 403 thiếu quyền hoặc owner chưa xác minh; 404 không tồn tại; 429 vượt giới hạn (kèm `Retry-After`); 5xx lỗi máy chủ.
+- **Phân loại truy cập:** Công khai (P), Cần đăng nhập (A), Cần quyền cụ thể (quyền trong ngoặc).
 
-## 2. Nhóm: Xác thực & Thanh toán
+> **Lưu ý quan trọng:** Tài liệu gốc nêu chắc chắn một số endpoint; nhiều endpoint admin/owner (tổng 40 admin + 12 owner) chỉ được tóm tắt theo nhóm. Các dòng ghi **[Đề xuất]** là đường dẫn dự kiến theo quy ước REST, cần đối chiếu với mã nguồn (Swagger `/docs` của FastAPI) trước khi chốt.
 
-### `POST /auth/payment/online/init`
-Khởi tạo luồng thanh toán trực tuyến. Không cần access token (khách chưa có).
-- Đầu vào: không bắt buộc trường nào, backend tự sinh một phiên mới nếu client chưa gửi `session_id` tạm.
-- Đầu ra: `payment_url` (liên kết Payoo để chuyển hướng khách), `session_id`.
-- Lỗi: `500` nếu Payoo không phản hồi khi tạo liên kết.
+## 1. Content (POI)
 
-### `POST /auth/payment/webhook/payoo`
-Endpoint nội bộ, chỉ được gọi bởi hệ thống Payoo (xác thực bằng chữ ký/secret riêng của Payoo, không dùng access token của khách).
-- Đầu vào: thông tin giao dịch từ Payoo, gồm `auth_code`, trạng thái thanh toán, mã giao dịch Payoo.
-- Đầu ra: `200 OK` xác nhận đã nhận; backend cập nhật trạng thái phiên tương ứng trong nội bộ.
+| Method | Đường dẫn | Truy cập | Mô tả |
+|---|---|---|---|
+| GET | `/poi/load-all` | P | Tải toàn bộ POI. Tham số: `lang`, `updated_after`; header `If-None-Match`. Trả `dataset_version`, `sync_mode` (full/delta), `removed_poi_ids`, `sync_cursor`, danh sách POI. 304 nếu không đổi. Chỉ trả POI đã sẵn sàng tiếng Anh. |
+| GET | `/poi/nearby` | P | POI gần vị trí (`lat`, `lng`, `radius`, `lang`). Dùng `$geoNear`, fallback Haversine. |
+| GET | `/poi/{id}` [Đề xuất] | P | Chi tiết một POI. |
+| GET | `/poi/{id}/menu` [Đề xuất] | P | Thực đơn của POI. |
 
-### `POST /auth/token/exchange`
-Đổi `auth_code` (luồng online) hoặc `shortened_code` (luồng tiền mặt) lấy access token.
-- Đầu vào: `code` (một trong hai loại mã trên), `code_type` (`auth_code` hoặc `shortened_code`).
-- Đầu ra khi thành công: `access_token`, `expires_at`.
-- Đầu ra khi thanh toán chưa hoàn tất: mã trạng thái `202 Accepted` kèm `status: pending`, để frontend biết cần thử lại.
-- Lỗi: `404` nếu mã không tồn tại/đã hết hạn trong Redis.
+**Hình dạng một POI trả về (rút gọn):**
+`id`, `name`, `description`, `location {lat,lng}`, `trigger_radius`, `audio_priority`, `images[]`, `audio_url` (đã gắn `?v={updated_at}&l={lang}`), `is_fallback`, `updated_at`.
 
-### `POST /auth/payment/cash/confirm` *(yêu cầu vai trò staff hoặc admin)*
-Nhân viên xác nhận đã thu tiền mặt cho một `session_id`.
-- Đầu vào: `session_id`, `amount_received`.
-- Đầu ra: `shortened_code` được sinh ra để đưa cho khách.
-- Lỗi: `404` nếu `session_id` không tồn tại, `409` nếu phiên đã được xác nhận thanh toán trước đó.
+**Quy tắc fallback ngôn ngữ trong phản hồi:** ngôn ngữ yêu cầu, rồi English, rồi Vietnamese gốc (khi đó `audio_url = null`).
 
-## 3. Nhóm: Dữ liệu điểm tham quan (POI) — phía khách
+## 2. Localization
 
-### `GET /pois`
-Trả về toàn bộ danh sách POI cùng bản dịch của tất cả ngôn ngữ hỗ trợ, phục vụ nguyên tắc "nạp một lần" của frontend. *(yêu cầu access token hợp lệ)*
-- Đầu ra: mảng đối tượng POI, mỗi đối tượng gồm toạ độ, bán kính, và mảng `translations` như mô tả trong `06_Database_Design.md` — nhưng **không** bao gồm nội dung audio dạng nhị phân, chỉ trả về `audio_url` để client tải riêng khi cần.
-- Lỗi: `401` nếu token không hợp lệ/hết hạn.
+| Method | Đường dẫn | Truy cập | Mô tả |
+|---|---|---|---|
+| POST | `/localizations/on-demand` | P | Dịch và sinh audio cho một POI/ngôn ngữ ngay. Body: `poi_id`, `lang`. Trả `audio_url` mới. Giới hạn 30 yêu cầu/10 phút; 429 kèm `Retry-After`. |
+| POST | `/localizations/prepare-hotset` | P | Làm nóng tối đa 10 POI gần nhất trong 1,5 km. Body: vị trí, `lang`. |
+| POST | `/localizations/warmup` | P | Chạy dịch toàn bộ corpus ở nền. |
 
-### `GET /pois/{poi_id}/audio/{language_code}`
-Trả về (hoặc chuyển hướng 302 tới) file audio đã lưu trên Blob Storage/CDN cho một POI và một ngôn ngữ cụ thể. Được gọi theo yêu cầu (khi khách thực sự bấm nghe), không gọi hàng loạt.
+## 3. UI i18n
 
-### `GET /pois/route-suggestion`
-Trả về một lộ trình tham quan gợi ý.
-- Tham số truy vấn tuỳ chọn: `poi_count` (số lượng POI mong muốn trong lộ trình).
-- Đầu ra: mảng `poi_id` theo thứ tự đề xuất.
+| Method | Đường dẫn | Truy cập | Mô tả |
+|---|---|---|---|
+| GET | `/ui-bundles/{locale}` | P | Bundle UI namespace `public-ui`. Locale chính (en, vi, zh, ja, ko) trả bundle tĩnh. Locale khác trả tiếng Anh với `status: pending` và `source_hash` trong lúc dịch nền; khi xong `status: ready`. |
 
-## 4. Nhóm: Chatbot
+## 4. Audio
 
-### `POST /chatbot/ask`
-Gửi một câu hỏi tới chatbot RAG. *(yêu cầu access token hợp lệ)*
-- Đầu vào: `question` (chuỗi văn bản câu hỏi của khách).
-- Đầu ra: `answer` (câu trả lời), `related_poi_ids` (mảng, có thể rỗng), `related_images` (mảng đường dẫn ảnh minh hoạ, có thể rỗng).
-- Lỗi: `429` nếu vượt giới hạn số câu hỏi trong khoảng thời gian ngắn (chống lạm dụng); `500` nếu dịch vụ AI tạm thời không phản hồi.
+| Method | Đường dẫn | Truy cập | Mô tả |
+|---|---|---|---|
+| GET | `/audio/languages` | P | Danh sách ngôn ngữ/giọng khả dụng (cache danh mục giọng 6 giờ). Cũng dùng làm probe khởi động. |
+| POST | `/audio/tts` | P | Tầng 2: văn bản thành MP3 stream. Body: `text`, `lang`. Header phản hồi: `X-Cache: HIT/MISS`, `X-Static-Url` (URL có phiên bản cho Service Worker). |
+| GET | `/audio/pack-manifest` | P | Manifest gói audio theo ngôn ngữ (`?lang=`). Trả `{lang, pack_version, total_files, total_bytes, files[]}`, mỗi tệp có SHA-256. |
+| GET | `/admin/audio-tasks/stream` | A (quyền admin) | **SSE** tiến độ tác vụ audio thời gian thực. |
+| POST | `/admin/audio-tasks/{id}/pause\|resume\|cancel` [Đề xuất] | A | Điều khiển tác vụ. |
 
-## 5. Nhóm: Quản trị POI (Admin)
+## 5. Maps
 
-### `GET /admin/pois` *(yêu cầu vai trò admin)*
-Trả về danh sách POI kèm trạng thái xử lý của pipeline dịch/TTS cho từng ngôn ngữ (`ready`, `processing`, `failed`), phục vụ màn hình quản lý.
+| Method | Đường dẫn | Truy cập | Cache | Mô tả |
+|---|---|---|---|---|
+| GET | `/static/maps/packs/current/manifest.json` | P | no-cache | Manifest chính |
+| GET | `/maps/offline-manifest` | P | no-cache | Manifest tương thích |
+| GET | `/maps/offline-options` | P | no-cache | Danh sách pack theo scope, nhãn, phiên bản, ngày nguồn, kích thước. Cũng dùng làm probe khởi động. |
+| GET | `/static/maps/packs/{version}/{file}.pmtiles` | P | immutable | PMTiles, hỗ trợ Range Request |
+| GET | `/static/maps/styles/*.json` | P | revalidate/immutable | Style và sprite |
+| GET | `/static/maps/fonts/{fontstack}/{range}.pbf` | P | immutable | Glyph |
 
-### `POST /admin/pois` *(yêu cầu vai trò admin)*
-Tạo mới một POI.
-- Đầu vào: `name_original`, `description_original`, `location` (kinh độ, vĩ độ), `proximity_radius_m`, `thumbnail` (upload file hoặc URL đã upload trước).
-- Đầu ra: đối tượng POI vừa tạo, trạng thái dịch/TTS ban đầu là `processing` cho toàn bộ ngôn ngữ.
-- Hiệu ứng phụ: backend kích hoạt data pipeline dịch & TTS chạy nền (mô tả ở `05_System_Architecture.md`, mục 2.5).
+Mọi đường dẫn tệp qua `resolve_safe_path` để chống Path Traversal.
 
-### `PUT /admin/pois/{poi_id}` *(yêu cầu vai trò admin)*
-Cập nhật thông tin một POI. Nếu `description_original` thay đổi, backend kích hoạt lại pipeline dịch/TTS cho toàn bộ ngôn ngữ (ghi đè bản dịch cũ).
+## 6. Authentication (admin/owner)
 
-### `DELETE /admin/pois/{poi_id}` *(yêu cầu vai trò admin)*
-Thực hiện xoá mềm (đặt `is_active = false`) thay vì xoá vĩnh viễn, để giữ lịch sử dữ liệu và tránh phá vỡ tham chiếu từ `chat_logs`.
+| Method | Đường dẫn | Truy cập | Mô tả |
+|---|---|---|---|
+| POST | `/admin/auth/login` [Đề xuất] | P | Đăng nhập, đặt 2 cookie. |
+| POST | `/admin/auth/refresh` [Đề xuất] | Cookie refresh | Cấp lại access token. |
+| POST | `/admin/auth/logout` [Đề xuất] | A | Xóa cookie. |
+| GET | `/admin/auth/me` | A | Thông tin người dùng hiện tại, role, quyền, cờ xác minh. |
+| POST | `/admin/auth/change-password` | A | Đổi mật khẩu. |
+| POST | `/admin/auth/register-owner` | P | Đăng ký chủ quán; tạo user chưa xác minh và đơn `pending`. |
 
-### `POST /admin/pois/{poi_id}/retry-pipeline` *(yêu cầu vai trò admin)*
-Kích hoạt lại pipeline dịch/TTS cho một POI khi lần chạy trước gặp lỗi.
+## 7. Admin (nhóm chức năng, tổng 40 route)
 
-## 6. Nhóm: Quản trị phiên & tài khoản (Admin/Staff)
+| Nhóm | Hành động | Quyền |
+|---|---|---|
+| POI | Liệt kê, tạo, sửa, xóa, bật/tắt, duyệt | `poi:read/create/update/delete/toggle/approve` |
+| Menu | CRUD | `menu:*` |
+| User | CRUD, gán role | `user:*` |
+| Role | CRUD | `role:*` |
+| Đăng ký chủ quán | Liệt kê, duyệt, từ chối (kèm `admin_note`) | `content:moderate` hoặc `user:update` [cần đối chiếu] |
+| Submission POI | Liệt kê, duyệt, từ chối | `poi:approve` |
+| Audit | Xem log | `audit:read` |
+| Analytics | Xem dashboard, xuất | `analytics:view/export` |
+| Quan sát runtime | Xem cửa sổ vị trí | `analytics:view` [cần đối chiếu] |
+| Audio tasks | Danh sách, SSE, pause/resume/cancel | Quyền POI/system |
 
-### `GET /admin/sessions?status=pending_cash` *(yêu cầu vai trò staff hoặc admin)*
-Trả về danh sách các phiên đang chờ xác nhận thanh toán tiền mặt, phục vụ US-11.
+Mẫu đường dẫn **[Đề xuất]**: `GET/POST /admin/pois`, `PUT/DELETE /admin/pois/{id}`, `PATCH /admin/pois/{id}/toggle`, `GET /admin/users`, `GET /admin/roles`, `GET /admin/registrations`, `POST /admin/registrations/{id}/approve|reject`, `GET /admin/submissions`, `GET /admin/audit-logs`.
 
-### `POST /admin/users` *(yêu cầu vai trò admin)*
-Tạo tài khoản mới cho nhân viên hoặc quản trị viên khác.
-- Đầu vào: `username`, `password`, `full_name`, `role`.
-- Đầu ra: đối tượng người dùng vừa tạo (không trả về `password_hash`).
+## 8. Owner (nhóm chức năng, 12 route)
 
-### `POST /admin/login`
-Đăng nhập cho admin/staff, trả về JWT chứa `user_id` và `role`.
+Điều kiện chung: đăng nhập, role `poi_owner`, `is_poi_owner_verified = true` (trừ route trạng thái đăng ký).
 
-## 7. Nhóm: Giám sát (Monitoring)
+| Method | Đường dẫn | Mô tả |
+|---|---|---|
+| GET | `/owner/registration-status` | Trạng thái đơn đăng ký (dùng khi chưa xác minh). |
+| PUT | `/owner/pois/{id}` | Sửa POI của mình (tạo submission chờ duyệt). |
+| POST | `/owner/pois` [Đề xuất] | Gửi POI mới. |
+| GET | `/owner/pois` [Đề xuất] | Danh sách POI của mình. |
+| GET | `/owner/submissions` [Đề xuất] | Danh sách submission và trạng thái. |
+| GET | `/owner/notifications` | Danh sách thông báo (`/owner/notifications*` gồm chi tiết và đánh dấu đã đọc). |
+| GET | `/owner/notifications/{id}` [Đề xuất] | Chi tiết thông báo. |
+| POST | `/owner/notifications/{id}/read` [Đề xuất] | Đánh dấu đã đọc. |
+| GET | `/owner/dashboard` [Đề xuất] | Tổng quan (quyền `analytics:view_own`). |
+| CRUD | Menu của quán mình [Đề xuất] | Quyền `menu:read/create/update`. |
 
-### `GET /admin/metrics/realtime` *(yêu cầu vai trò admin)*
-Trả về các chỉ số hiện tại: số phiên đang hoạt động, độ trễ trung bình API gần nhất, tỉ lệ lỗi trong 5 phút gần nhất.
+## 9. AI Advisor
 
-### `GET /admin/metrics/summary?from=&to=` *(yêu cầu vai trò admin)*
-Trả về số liệu tổng hợp theo khoảng thời gian, lấy từ collection `system_metrics`: tổng lượt khách, doanh thu theo hình thức thanh toán, top POI, số câu hỏi chatbot.
+| Method | Đường dẫn | Truy cập | Mô tả |
+|---|---|---|---|
+| GET | `/ai/usage` | A | Trả `{limit, used, remaining}`. Admin không giới hạn. |
+| POST | `/ai/enhance-description` | A | Body: mô tả gốc (và tùy chọn ngữ cảnh, thời tiết nếu bật). Trả bản mô tả cải thiện 200–300 từ. Timeout 30 giây. Lỗi nêu rõ nhà cung cấp. Hết quota: lỗi 429. |
 
-## 8. Bảo mật & giới hạn tần suất
-- Toàn bộ endpoint dưới `/admin/*` bắt buộc JWT có `role` phù hợp; backend kiểm tra vai trò ở tầng middleware chung, không lặp lại logic kiểm tra ở từng endpoint.
-- Endpoint `/chatbot/ask` áp dụng giới hạn tần suất theo access token (ví dụ tối đa N câu hỏi/phút) để tránh chi phí gọi mô hình AI tăng đột biến do lạm dụng.
-- Endpoint webhook của Payoo được xác thực bằng chữ ký riêng do Payoo cung cấp, tách biệt hoàn toàn khỏi cơ chế JWT dùng cho người dùng thông thường.
+## 10. Analytics và quan sát runtime
+
+| Nhóm | Mô tả |
+|---|---|
+| API thu thập analytics | Công khai nhưng chỉ ghi khi client gửi đủ thông tin consent; có rate limit. Gửi sự kiện, phiên, thiết bị ẩn danh. Đường dẫn cụ thể: xem mã nguồn. |
+| Ingest vị trí runtime | Kênh công khai riêng, rate limit, không phụ thuộc consent analytics. |
+| Đọc số liệu | Chỉ admin; dựa trên read model. `tracked_online_users` là số thiết bị ẩn danh đã đồng ý còn trong cửa sổ trượt. |
+
+## 11. Hệ thống
+
+| Method | Đường dẫn | Mô tả |
+|---|---|---|
+| GET | `/health` | Tiến trình còn sống. |
+| GET | `/health/ready` | Đã sẵn sàng (DB, transaction, lưu trữ). |
+
+## 12. Hợp đồng quan trọng giữa frontend và backend
+
+1. **ETag và delta sync:** frontend gửi `If-None-Match` và `updated_after`; backend trả 304 hoặc phần thay đổi cùng `removed_poi_ids`.
+2. **Phiên bản audio:** `audio_url` có `?v=...&l=...`; frontend không tự bỏ tham số này vì Service Worker dùng để phân shard.
+3. **Cờ `is_fallback`:** frontend dùng để quyết định gọi on-demand thay vì phát ngay.
+4. **429 và `Retry-After`:** frontend phải dừng và backoff đúng thời gian (prefetch: 30 s, 60 s, 120 s, tối đa 10 phút).
+5. **Trạng thái UI bundle:** `pending` thì dùng tiếng Anh tạm; sẽ kiểm tra lại để chuyển sang `ready`.
+6. **Cookie:** mọi gọi API admin/owner dùng `credentials: include`.
+7. **Phiên hết hạn:** 401 thì thử refresh một lần, thất bại thì về trang đăng nhập.

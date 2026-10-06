@@ -1,70 +1,169 @@
-# 12. Triển Khai Hệ Thống — LinhUngGuide
+# 12 — Deployment (Chạy và triển khai hệ thống)
 
-## 1. Tổng quan chiến lược triển khai
-Hệ thống được triển khai hoàn toàn trên nền tảng Azure để tận dụng việc quản lý tập trung các dịch vụ AI/dịch thuật/TTS/lưu trữ đã chọn ở `05_System_Architecture.md`. Quy trình triển khai được tự động hoá qua GitHub Actions, với ba môi trường tách biệt: Development, Staging, Production (pilot).
+> Tài liệu gốc mô tả kiến trúc, trình tự khởi động và cấu hình chính nhưng **không có hướng dẫn triển khai đầy đủ**. Các lệnh và cấu hình cụ thể dưới đây là **[Đề xuất]**, cần đối chiếu với `README`, `requirements.txt`, `package.json` và tệp mẫu `.env` thực tế của dự án.
 
-## 2. Thành phần hạ tầng và nơi lưu trú
+## 1. Thành phần cần chạy
 
-| Thành phần | Dịch vụ Azure / bên thứ ba | Ghi chú |
+| Thành phần | Mô tả | Bắt buộc |
 |---|---|---|
-| Backend API (FastAPI) | Azure App Service (Linux, container) hoặc Azure Container Apps | Chọn Container Apps nếu cần auto-scale linh hoạt hơn theo lượng traffic biến động mạnh vào mùa lễ hội |
-| Frontend (React PWA) | Azure Static Web Apps | Build tĩnh (Vite build), phân phối qua CDN toàn cầu tích hợp sẵn |
-| CSDL chính | MongoDB Atlas (cụm M0/M10 tuỳ giai đoạn) | M0 (free tier) dùng cho môi trường Dev/Staging, nâng cấp M10 trả phí cho Production khi vận hành thật |
-| Chỉ mục vector | Azure AI Search | Tier Free/Basic tuỳ dung lượng chỉ mục thực tế |
-| Cache | Azure Cache for Redis (Basic tier) | Dùng cho luồng mã ngắn thanh toán tiền mặt |
-| Lưu trữ đối tượng | Azure Blob Storage + Azure CDN | Container riêng cho `audio/` và `images/` |
-| Dịch vụ AI | Azure OpenAI Service | Resource riêng theo từng môi trường để tách quota/chi phí |
-| Dịch thuật & TTS | Azure AI Translator, Azure Speech | Cùng resource group với các dịch vụ Azure khác |
-| Thanh toán | Payoo (sandbox cho Dev/Staging, production merchant cho Production) | Cấu hình webhook URL riêng cho từng môi trường |
-| Giám sát | Azure Application Insights | Gắn trực tiếp vào App Service/Container Apps |
+| Backend FastAPI | Một tiến trình ASGI (uvicorn/gunicorn+uvicorn workers) | Có |
+| MongoDB | Cần hỗ trợ transaction (replica set, kể cả một nút) | Có |
+| Redis | Hiện diện, rate limit, phối hợp | Có |
+| Frontend PWA | Tệp tĩnh sau khi build bằng Vite | Có |
+| Kho media/tĩnh | Thư mục trên đĩa hoặc S3-compatible | Có |
+| Reverse proxy + HTTPS | Nginx/Caddy | Có (production) |
+| Gói bản đồ PMTiles | Tệp trong thư mục maps | Có nếu dùng offline |
 
-## 3. Quy trình CI/CD (GitHub Actions)
+**Vì sao cần HTTPS:** Service Worker, định vị (Geolocation) và cookie `Secure` chỉ hoạt động đầy đủ trên HTTPS (trừ `localhost`).
 
-### 3.1. Luồng cho Backend
-1. Khi có commit/merge vào nhánh `develop`: pipeline tự động chạy lint (`ruff`/`flake8`), chạy Unit Test (`pytest`), build image Docker, và deploy tự động lên môi trường Staging.
-2. Khi có merge vào nhánh `main` (đã được duyệt qua Pull Request): pipeline chạy lại toàn bộ kiểm thử, sau đó yêu cầu một bước phê duyệt thủ công (manual approval) trước khi deploy lên Production, nhằm tránh sự cố ngoài ý muốn ảnh hưởng tới khách đang tham quan thực tế.
-3. Biến môi trường nhạy cảm (khoá API Azure OpenAI, secret webhook Payoo, chuỗi kết nối MongoDB) được lưu trong GitHub Secrets, không bao giờ commit trực tiếp vào mã nguồn.
+## 2. Yêu cầu phần mềm
 
-### 3.2. Luồng cho Frontend
-1. Tương tự backend: lint, build, chạy Unit Test/E2E test cơ bản trên môi trường Staging trước.
-2. Azure Static Web Apps hỗ trợ sẵn cơ chế "preview deployment" cho mỗi Pull Request, giúp nhóm phát triển xem trước giao diện trước khi merge.
-3. Sau khi merge vào `main`, bản build production được xuất bản tự động lên CDN.
+- Python 3.11 trở lên [Đề xuất], Node.js 20 trở lên [Đề xuất], MongoDB 6 trở lên, Redis 6 trở lên.
+- Tài nguyên tối thiểu gợi ý cho demo/đồ án: 2 vCPU, 4 GB RAM, 20 GB đĩa (audio và pack bản đồ chiếm nhiều nhất).
 
-### 3.3. Quản lý phiên bản cơ sở dữ liệu
-Các thay đổi cấu trúc dữ liệu (ví dụ thêm trường mới vào collection `pois`) được viết dưới dạng script migration nhỏ, chạy thủ công có kiểm soát bởi người triển khai (không tự động chạy trong CI/CD) để tránh rủi ro với dữ liệu thật đang phục vụ khách.
+## 3. Cấu hình môi trường
 
-## 4. Các bước triển khai lần đầu (Initial Setup)
-1. Tạo resource group riêng trên Azure cho dự án (ví dụ `rg-linhungguide-prod`).
-2. Khởi tạo các resource: App Service/Container Apps, Static Web Apps, Azure OpenAI, Azure AI Translator, Azure Speech, Azure AI Search, Azure Cache for Redis, Azure Blob Storage, Application Insights.
-3. Khởi tạo cụm MongoDB Atlas, cấu hình network access chỉ cho phép kết nối từ dải IP của App Service/Container Apps (không mở public rộng rãi).
-4. Chạy seed script tạo tài khoản admin đầu tiên trong collection `admin_users`.
-5. Đăng ký tài khoản merchant Payoo (sandbox trước, production sau khi kiểm thử ổn định), cấu hình webhook URL trỏ về endpoint `/auth/payment/webhook/payoo` của môi trường tương ứng.
-6. Cấu hình biến môi trường backend: chuỗi kết nối MongoDB, Redis, các khoá API Azure, secret Payoo, khoá bí mật ký JWT.
-7. Sinh mã QR (dùng script Python với thư viện `qrcode`) trỏ về domain frontend Production, in và đặt tại cổng vào chùa.
-8. Nhập dữ liệu POI ban đầu qua admin dashboard, chờ data pipeline hoàn tất dịch/TTS cho toàn bộ POI trước khi công bố chính thức.
+### 3.1 Backend (biến môi trường — tên tham khảo)
 
-## 5. Domain và chứng chỉ bảo mật
-- Frontend: domain chính (ví dụ `linhungguide.vn`) trỏ về Azure Static Web Apps, dùng chứng chỉ TLS được Azure tự động cấp và gia hạn.
-- Backend API: subdomain riêng (ví dụ `api.linhungguide.vn`) trỏ về App Service/Container Apps, cũng dùng TLS tự động.
-- Toàn bộ giao tiếp bắt buộc qua HTTPS; cấu hình chuyển hướng tự động từ HTTP sang HTTPS ở tầng hạ tầng.
-
-## 6. Kế hoạch sao lưu và khôi phục (Backup & Recovery)
-- MongoDB Atlas: bật tính năng sao lưu tự động theo lịch hằng ngày (continuous backup nếu ngân sách cho phép ở tier trả phí), lưu giữ tối thiểu 7 ngày gần nhất.
-- Azure Blob Storage: bật soft-delete cho container audio/ảnh, tránh mất dữ liệu khi có thao tác xoá nhầm từ pipeline hoặc admin.
-- Redis: không cần sao lưu dài hạn vì chỉ chứa dữ liệu tạm có TTL ngắn; nếu Redis gặp sự cố, ảnh hưởng chỉ giới hạn ở các phiên đang chờ đổi mã ngắn, không mất dữ liệu vận hành cốt lõi.
-
-## 7. Giám sát sau triển khai (Post-Deployment Monitoring)
-- Azure Application Insights theo dõi tỉ lệ lỗi, độ trễ API theo thời gian thực, tích hợp trực tiếp vào Monitoring Dashboard mô tả ở `08_UI_UX_Specification.md`, mục 3.2.
-- Thiết lập cảnh báo tự động (qua email hoặc kênh chat nội bộ của nhóm) khi: tỉ lệ lỗi 5xx vượt ngưỡng trong 5 phút, độ trễ trung bình API vượt ngưỡng, hoặc một trong các dịch vụ Azure phụ thuộc (Translator, Speech, OpenAI) trả về lỗi liên tục.
-- Theo dõi định kỳ chi phí sử dụng các dịch vụ trả phí theo lượng dùng (đặc biệt Azure OpenAI) để tránh vượt ngân sách đồ án, có thể cấu hình ngưỡng cảnh báo chi phí (budget alert) trực tiếp trên Azure Cost Management.
-
-## 8. Kế hoạch triển khai theo mốc thời gian (bám theo Launch Plan của PRD)
-| Giai đoạn | Mục tiêu | Môi trường |
+| Nhóm | Biến | Ghi chú |
 |---|---|---|
-| Phát triển | Hoàn thiện các tính năng theo yêu cầu ở `02_Requirements.md` | Development |
-| Kiểm thử nội bộ | Chạy đầy đủ các cấp độ kiểm thử ở `11_Test_Plan.md` | Staging |
-| **Pilot (16/05/2025 theo PRD gốc)** | Kiểm thử sơ bộ tại hiện trường với người dùng thật, thu thập phản hồi UAT | Production (giới hạn quy mô) |
-| Vận hành chính thức | Mở rộng quy mô, bật đầy đủ giám sát và cảnh báo, hoàn thiện tài liệu bàn giao | Production |
+| Bảo mật bắt buộc (non-dev) | `JWT_SECRET`, `REFRESH_TOKEN_SECRET`, `SECRET_KEY` | Chuỗi ngẫu nhiên dài; thiếu thì backend không chạy |
+| Khởi tạo admin | `SUPERADMIN_BOOTSTRAP_MODE` + thông tin tài khoản | Sai chế độ thì dừng ngay |
+| PII | Khóa Fernet | Giữ bí mật, sao lưu an toàn |
+| CSDL | Chuỗi kết nối MongoDB, tên DB | Cần replica set |
+| Cache | Địa chỉ Redis | |
+| Bản đồ | `MAP_PACK_DATA_DIR` | Mặc định `backend/app/static/maps/` |
+| Media | Cấu hình S3-compatible (nếu dùng) | Khởi động có kiểm tra sức khỏe |
+| AI | Khóa Gemini hoặc cấu hình ProxyPal | Tùy chọn |
+| Thời tiết | Khóa OpenWeather | Tùy chọn |
+| CORS/Cookie | Tên miền cho phép, cờ Secure | |
 
-## 9. Kế hoạch bàn giao sau đồ án
-Toàn bộ mã nguồn, tài liệu (bao gồm 12 tài liệu trong bộ tài liệu này), script triển khai, và hướng dẫn cấu hình biến môi trường được lưu trong một repository Git duy nhất kèm file `README.md` hướng dẫn khởi chạy nhanh (quick start), nhằm đảm bảo người kế thừa (ban quản lý chùa hoặc nhóm vận hành tiếp theo) có thể tiếp tục bảo trì hệ thống sau khi đồ án kết thúc, đáp ứng NFR-12.
+### 3.2 Frontend (lúc build)
+
+| Biến | Ghi chú |
+|---|---|
+| `VITE_MAPTILER_KEY` | Cần cho Cloud/Hybrid; giới hạn khóa theo tên miền |
+| Địa chỉ API | Thường dùng cùng nguồn gốc (proxy `/api`) để cookie hoạt động |
+
+Không đưa bí mật phía server vào biến `VITE_*` vì chúng bị lộ cho trình duyệt.
+
+## 4. Chạy trên máy phát triển (đề xuất)
+
+1. Khởi động MongoDB dạng replica set một nút và Redis (khuyên dùng Docker).
+2. Backend: tạo môi trường ảo, cài phụ thuộc, tạo `.env` với `JWT_SECRET` v.v. (môi trường dev có thể nới lỏng), chạy uvicorn với chế độ tự tải lại.
+3. Frontend: cài phụ thuộc, tạo `.env` với `VITE_MAPTILER_KEY`, chạy máy chủ dev của Vite.
+4. Mở trình duyệt, kiểm tra `/health` và `/health/ready` của backend.
+5. Đăng nhập tài khoản super admin được tạo khi khởi động; thêm POI mẫu.
+6. Lưu ý: Service Worker và PWA chỉ thật sự được thử nghiệm đúng ở bản build (`vite build` rồi `vite preview`), không phải ở chế độ dev.
+
+## 5. Triển khai production (đề xuất)
+
+### 5.1 Mô hình đơn giản (một máy chủ)
+
+Mô tả theo lớp từ ngoài vào trong:
+1. **Tên miền + chứng chỉ TLS** (Let's Encrypt qua Caddy hoặc Certbot).
+2. **Reverse proxy (Nginx/Caddy)** nhận mọi yêu cầu:
+   - Đường dẫn `/api/` chuyển tới backend.
+   - Đường dẫn `/static/` chuyển tới backend (hoặc phục vụ trực tiếp từ đĩa để nhanh hơn, nhưng phải giữ nguyên header cache và hỗ trợ Range Request cho PMTiles).
+   - Mọi đường dẫn còn lại phục vụ tệp frontend đã build, với quy tắc quay về trang chính (catch-all) cho định tuyến phía client.
+3. **Backend** chạy bằng trình quản lý tiến trình (systemd hoặc Docker) với vài worker uvicorn.
+4. **MongoDB và Redis** chạy cùng máy (Docker) hoặc dịch vụ quản lý; chỉ lắng nghe trong mạng nội bộ.
+5. **Ổ đĩa dữ liệu** gắn riêng cho thư mục media và maps, có sao lưu.
+
+### 5.2 Docker Compose (đề xuất cấu trúc)
+
+Các dịch vụ: `mongo` (replica set, có volume), `redis`, `backend` (phụ thuộc mongo, redis; mount volume static), `frontend` hoặc `nginx` (phục vụ bản build + proxy). Mỗi dịch vụ có `healthcheck`; backend dùng `/health/ready` làm điều kiện sẵn sàng. Bí mật truyền qua tệp `.env` không commit hoặc secrets của Docker.
+
+### 5.3 Lưu ý riêng cho PWA và cache
+
+- **`sw.js` và `index.html` không được cache lâu** ở lớp proxy/CDN; nếu bị cache, người dùng sẽ kẹt bản cũ.
+- Tệp có băm tên (chunk, asset) có thể cache dài hạn.
+- Manifest bản đồ: `no-cache`; pack `.pmtiles`, glyph: `immutable`.
+- Sau mỗi bản phát hành, `APP_BUILD_SYNC` dọn chunk tùy chọn cũ để không lẫn asset giữa hai build.
+- Bật nén (gzip/brotli) cho JS/CSS/JSON; **không** nén lại tệp PMTiles/MP3 và phải bảo toàn Range Request.
+
+## 6. Trình tự khởi động mong đợi của backend
+
+Khi triển khai, kỳ vọng thấy theo thứ tự:
+1. Kiểm tra bí mật và chế độ bootstrap (sai thì dừng).
+2. Kết nối MongoDB, xác nhận transaction; nếu dùng S3 thì kiểm tra sức khỏe.
+3. Tạo role mặc định và super admin; kiểm tra hoặc tạo thư mục lưu trữ.
+4. Phục hồi tác vụ audio, bật vòng bảo trì, tạo index, bật worker analytics và dọn media.
+5. Gắn router; `/health/ready` trả sẵn sàng.
+
+Nếu khởi động lỗi, đọc log theo đúng trình tự trên để xác định tầng hỏng.
+
+## 7. Khởi tạo dữ liệu lần đầu
+
+1. Đăng nhập super admin.
+2. Kiểm tra 4 role mặc định đã có.
+3. Đặt gói bản đồ vào `MAP_PACK_DATA_DIR` (hoặc `backend/app/static/maps/`) theo cấu trúc `packs/{version}/*.pmtiles`, `packs/current/manifest.json`, `styles/`, `fonts/`.
+4. Nhập POI; hệ thống tự xếp việc sinh audio cho 5 ngôn ngữ ưu tiên; theo dõi ở màn hình tác vụ audio.
+5. Chạy warmup để dịch toàn bộ corpus nếu cần.
+6. Kiểm tra `/audio/pack-manifest?lang=...` và `/maps/offline-options`.
+
+## 8. Quy trình phát hành (đề xuất)
+
+1. Chạy kiểm thử tự động (CI): unit, tích hợp, E2E.
+2. Build frontend (`vite build`); build ảnh Docker backend.
+3. Triển khai lên staging, chạy kiểm thử khói: `/health`, `/health/ready`, mở app, tải POI, phát một audio.
+4. Triển khai production theo kiểu cuốn chiếu hoặc thay thế nhanh; không xóa tệp asset cũ ngay để người dùng đang giữ bản cũ không gặp lỗi 404.
+5. Xác nhận Service Worker mới được kích hoạt và `APP_BUILD_SYNC` chạy.
+6. Theo dõi log và số liệu trong 24 giờ đầu.
+7. **Quay lui:** giữ ảnh/bản build trước; khôi phục và xóa cache proxy cho `sw.js`/`index.html`.
+
+## 9. Sao lưu và khôi phục
+
+| Dữ liệu | Cách sao lưu | Tần suất đề xuất |
+|---|---|---|
+| MongoDB | `mongodump` hoặc snapshot đĩa | Hằng ngày |
+| Media (audio, ảnh) | Đồng bộ thư mục hoặc phiên bản hóa S3 | Hằng ngày/tăng dần |
+| Gói bản đồ | Lưu bản gốc ngoài máy chủ | Khi cập nhật |
+| Khóa và `.env` | Kho bí mật an toàn | Khi đổi |
+
+Khôi phục: dựng MongoDB, nạp bản sao lưu, đặt lại media, khởi động backend. Audio có thể **sinh lại** từ văn bản nếu mất (tốn thời gian nhưng không tốn tiền nhờ Edge-TTS).
+
+Lưu ý: mất khóa Fernet thì không giải mã được CCCD đã lưu; mất `JWT_SECRET` chỉ khiến mọi người phải đăng nhập lại.
+
+## 10. Giám sát và vận hành
+
+- **Kiểm tra sống/sẵn sàng:** `/health`, `/health/ready` cho giám sát và bộ cân bằng tải.
+- **Log:** log ứng dụng backend, log proxy; audit log nghiệp vụ trong MongoDB.
+- **Số liệu nghiệp vụ:** dashboard analytics và cửa sổ quan sát vị trí runtime của admin.
+- **Cảnh báo nên có:** `/health/ready` thất bại, đĩa trên 80%, tác vụ audio thất bại liên tục, lỗi 5xx tăng, MongoDB/Redis ngắt.
+- **Bảo trì định kỳ:** worker dọn media chạy nền; `audio_tasks` tự hết hạn 14 ngày; theo dõi dung lượng thư mục audio.
+
+## 11. Bảo mật khi triển khai
+
+- Bắt buộc HTTPS; bật HSTS.
+- Không mở cổng MongoDB và Redis ra Internet; bật xác thực.
+- Bí mật chỉ nằm trong biến môi trường hoặc kho bí mật, không nằm trong mã.
+- Giới hạn khóa MapTiler theo tên miền.
+- Đặt tên miền cho CORS/cookie chính xác; cookie `Secure`, `httpOnly`, `SameSite=Lax`.
+- Tường lửa chỉ mở 80/443 (và SSH hạn chế).
+- Cập nhật phụ thuộc định kỳ.
+
+## 12. Chi phí dự kiến
+
+| Hạng mục | Ghi chú |
+|---|---|
+| Phần mềm lõi | $0 (mã nguồn mở) |
+| TTS, dịch | $0 (mức miễn phí; có rủi ro giới hạn) |
+| Máy chủ/VPS, tên miền | Chi phí duy nhất chắc chắn phát sinh |
+| MapTiler | Tùy gói; có thể bỏ nếu chỉ dùng Offline/pack |
+| Gemini/ProxyPal | Tùy mức dùng; có hạn mức 10/ngày/owner |
+| S3 | Tùy dung lượng nếu chọn |
+
+## 13. Danh sách kiểm tra trước khi go-live
+
+- [ ] HTTPS hoạt động, chứng chỉ tự gia hạn.
+- [ ] Đã đặt `JWT_SECRET`, `REFRESH_TOKEN_SECRET`, `SECRET_KEY`, khóa Fernet, chế độ bootstrap đúng.
+- [ ] MongoDB là replica set; backend qua bước kiểm tra transaction.
+- [ ] `/health/ready` trả sẵn sàng.
+- [ ] Gói bản đồ và manifest đã có; `offline-options` trả đúng.
+- [ ] POI mẫu đã có audio đủ 5 ngôn ngữ.
+- [ ] `sw.js`, `index.html` không bị cache lâu.
+- [ ] Range Request cho PMTiles hoạt động qua proxy.
+- [ ] Kiểm thử khói trên điện thoại thật: cài PWA, định vị, nghe thuyết minh, dùng offline.
+- [ ] Đã có sao lưu tự động và đã thử khôi phục.
+- [ ] Đã đổi mật khẩu super admin mặc định.

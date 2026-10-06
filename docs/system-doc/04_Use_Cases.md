@@ -1,156 +1,184 @@
-# 04. Use Cases — LinhUngGuide
+# 04 — Use Cases (Luồng sử dụng chính)
 
-Tài liệu mô tả các luồng sử dụng chính bằng lời (không dùng sơ đồ), theo cấu trúc: Tác nhân — Điều kiện tiên quyết — Luồng chính — Luồng phụ/ngoại lệ — Kết quả.
+Các luồng được mô tả bằng lời, theo từng bước đánh số. Mỗi use case gồm: tác nhân, điều kiện trước, luồng chính, luồng thay thế/ngoại lệ, kết quả.
 
----
+## Danh mục
 
-## UC-01: Thanh toán trực tuyến để vào tham quan
-
-**Tác nhân chính**: Khách tham quan
-**Tác nhân phụ**: Cổng thanh toán Payoo, hệ thống Backend
-
-**Điều kiện tiên quyết**: Khách đã quét mã QR và mở web app; khách chưa có access token hợp lệ.
-
-**Luồng chính**:
-1. App hiển thị màn hình "Pay to Access Features" với hai lựa chọn: thanh toán online hoặc tiền mặt.
-2. Khách chọn "Pay Now (Online)".
-3. Frontend gửi yêu cầu tới backend để lấy liên kết thanh toán.
-4. Backend sinh một mã xác thực tạm thời (auth_code) gắn với phiên hiện tại, gọi sang Payoo để tạo một liên kết thanh toán có chứa mã này, rồi trả liên kết đó về cho frontend.
-5. Frontend chuyển hướng khách sang trang thanh toán của Payoo.
-6. Khách hoàn tất thanh toán trên giao diện Payoo (ví điện tử, ngân hàng, thẻ nội địa...).
-7. Payoo gửi thông báo thanh toán thành công về backend (dưới dạng webhook) kèm theo auth_code tương ứng.
-8. Backend đánh dấu giao dịch là đã thanh toán và chuyển hướng khách trở lại web app, mang theo auth_code.
-9. Frontend dùng auth_code gọi backend để đổi lấy access token; vì có độ trễ giữa bước 7 và bước 9, frontend sẽ thử lại một vài lần theo chu kỳ ngắn cho tới khi backend xác nhận thanh toán đã ghi nhận hoặc đạt số lần thử tối đa.
-10. Khi backend xác nhận thanh toán hợp lệ, backend trả về access token; frontend lưu token này lại trên thiết bị và mở khoá toàn bộ tính năng tham quan.
-
-**Luồng phụ**:
-- 6a. Khách rời trang thanh toán mà không hoàn tất: ở bước 9, backend trả trạng thái "đang chờ thanh toán"; frontend hiển thị thông báo và cho phép khách thử lại.
-- 9a. Vượt quá số lần thử lại tối đa mà vẫn chưa nhận được xác nhận: app hiển thị hướng dẫn liên hệ nhân viên hỗ trợ.
-
-**Kết quả**: Khách có access token hợp lệ và được phép sử dụng toàn bộ tính năng của app trong thời hạn phiên.
+| Mã | Tên | Tác nhân chính |
+|---|---|---|
+| UC-01 | Khởi động app và chọn ngôn ngữ | Du khách |
+| UC-02 | Xem bản đồ và chi tiết POI | Du khách |
+| UC-03 | Nghe thuyết minh tự động theo vị trí | Du khách |
+| UC-04 | Đổi ngôn ngữ | Du khách |
+| UC-05 | Tải gói offline | Du khách |
+| UC-06 | Đồng ý hoặc từ chối analytics | Du khách |
+| UC-07 | Đăng ký chủ quán | Chủ quán |
+| UC-08 | Duyệt đăng ký chủ quán | Admin |
+| UC-09 | Chủ quán gửi tạo/sửa POI | Chủ quán |
+| UC-10 | Admin duyệt submission POI | Admin |
+| UC-11 | Admin quản lý POI và sinh audio | Admin |
+| UC-12 | Chủ quán dùng AI Advisor | Chủ quán |
+| UC-13 | Đăng nhập, làm mới phiên, đăng xuất | Admin/Owner |
+| UC-14 | Quản lý role và quyền | Super Admin |
 
 ---
 
-## UC-02: Thanh toán tiền mặt để vào tham quan
+## UC-01. Khởi động app và chọn ngôn ngữ
 
-**Tác nhân chính**: Khách tham quan
-**Tác nhân phụ**: Nhân viên, hệ thống Backend, Redis
+- **Tác nhân:** Du khách.
+- **Điều kiện trước:** Đã mở đường dẫn của app (lần đầu hoặc đã cài PWA).
+- **Luồng chính:**
+  1. Trình duyệt đăng ký Service Worker.
+  2. Bộ định tuyến chuyển mọi đường dẫn vào ứng dụng bản đồ; hiển thị màn splash.
+  3. Du khách chọn ngôn ngữ.
+  4. App chạy song song năm việc: (a) định vị tốt nhất có thể; (b) đọc snapshot POI và UI bundle trong IndexedDB; (c) đồng bộ nội dung POI (full hoặc delta); (d) chuẩn bị hotset gồm tối đa 10 POI gần nhất trong 1,5 km; (e) tải UI bundle và warmup nền.
+  5. Khi nội dung cần thiết sẵn sàng, splash ẩn đi và bản đồ hiển thị.
+- **Luồng thay thế:**
+  - 4a. Backend không phản hồi: app thử thăm dò 2 lần trong cửa sổ 8 giây (timeout 2,5 giây mỗi lần) rồi dùng dữ liệu offline.
+  - 4b. UI bundle của ngôn ngữ chưa sẵn: app dùng tiếng Anh trước (quick-start), chuyển sang ngôn ngữ đích khi xong.
+- **Kết quả:** Bản đồ hiển thị với dữ liệu mới nhất có thể, hoặc dữ liệu lưu sẵn.
 
-**Điều kiện tiên quyết**: Khách đã mở web app, chưa có access token hợp lệ.
+## UC-02. Xem bản đồ và chi tiết POI
 
-**Luồng chính**:
-1. Khách chọn "Pay with Cash" trên màn hình thanh toán.
-2. App hiển thị hướng dẫn "vui lòng thanh toán tiền mặt tại quầy, đưa mã số phiên (session_id) cho nhân viên".
-3. Khách đến quầy, đưa tiền mặt và mã số phiên cho nhân viên.
-4. Nhân viên xác nhận đã thu tiền trên giao diện quản trị dành cho nhân viên.
-5. Backend ghi nhận giao dịch là đã thanh toán, tạo một phiên (session) và sinh một mã xác thực tạm thời (auth_code).
-6. Backend rút gọn mã xác thực này thành một mã ngắn, dễ đọc (shortened_code) và lưu tạm vào Redis kèm thời hạn sử dụng.
-7. Backend hiển thị mã ngắn này trên giao diện của nhân viên.
-8. Nhân viên đọc/đưa mã ngắn lại cho khách.
-9. Khách nhập mã ngắn vào app.
-10. Frontend gửi mã ngắn lên backend để đổi lấy access token; backend kiểm tra mã trong Redis, nếu hợp lệ sẽ sinh access token và trả về cho khách.
-11. Frontend lưu access token và mở khoá các tính năng của app.
+- **Điều kiện trước:** Đã hoàn tất UC-01.
+- **Luồng chính:**
+  1. Bản đồ hiển thị theo chế độ hiện hành (Cloud, Offline, Hybrid).
+  2. Du khách chạm vào một POI.
+  3. App mở thẻ chi tiết: tên, mô tả theo ngôn ngữ, ảnh, thực đơn, nút nghe thuyết minh.
+- **Luồng thay thế:**
+  - 2a. POI chưa có bản dịch ngôn ngữ đã chọn: hiển thị tiếng Anh; nếu cũng không có, hiển thị tiếng Việt; POI được đánh dấu `is_fallback`.
+  - 1a. Chế độ Hybrid và mất mạng: tự chuyển sang bản đồ offline đã kích hoạt.
+- **Kết quả:** Du khách xem được thông tin POI.
 
-**Luồng phụ**:
-- 9a. Khách nhập sai mã hoặc mã đã hết hạn trong Redis: backend trả lỗi, app yêu cầu khách quay lại quầy để lấy mã mới.
+## UC-03. Nghe thuyết minh tự động theo vị trí
 
-**Kết quả**: Khách có access token hợp lệ tương đương với luồng thanh toán online.
+- **Điều kiện trước:** Đã cấp quyền định vị; app đang theo dõi vị trí.
+- **Luồng chính:**
+  1. Cứ mỗi 5 giây (throttle), app nhận một vị trí GPS mới.
+  2. Bộ máy geofence tính khoảng cách tới từng POI bằng Turf; POI nào trong bán kính (mặc định 30 m) được đưa vào danh sách "chờ vào".
+  3. Nếu POI vẫn ở trong vùng sau 3 giây (debounce), sự kiện ENTER được xác nhận.
+  4. Nếu có nhiều POI, chọn theo `audio_priority` rồi đến khoảng cách.
+  5. POI được chọn đưa vào hàng đợi thuyết minh (một ô).
+  6. Bộ phát audio thử các tầng theo thứ tự (xem luồng thay thế) cho đến khi phát được.
+  7. Khi phát xong, đóng cửa sổ thông tin.
+  8. POI vào trạng thái cooldown 5 phút sau khi du khách rời vùng.
+- **Luồng thay thế (chọn tầng audio):**
+  - Tầng 1: POI có `audio_url` và không phải `is_fallback`: phát từ cache Service Worker.
+  - Tầng 1.5: POI là `is_fallback=true`: gọi `POST /localizations/on-demand`, backend dịch và sinh audio, trả `audio_url` mới (2–5 giây).
+  - Tầng 2: Nếu tầng trên lỗi: gọi `POST /audio/tts` để nhận MP3 dạng stream (3–8 giây).
+  - Tầng 3: Nếu vẫn lỗi hoặc offline: dùng `window.speechSynthesis` của thiết bị.
+- **Ngoại lệ:**
+  - 6a. Người dùng đổi ngôn ngữ trong lúc chờ: bỏ kết quả cũ.
+  - 6b. Backend trả 429 hoặc `Retry-After`: dừng gọi, chờ theo thời gian được yêu cầu.
+- **Song song:** Prefetch nền quét POI `is_fallback` trong 500 m, tối đa 3 POI mỗi đợt, cách nhau ít nhất 30 giây.
+- **Kết quả:** Du khách nghe thuyết minh đúng ngôn ngữ, không lặp trong 5 phút.
 
----
+## UC-04. Đổi ngôn ngữ
 
-## UC-03: Xem thông tin và nghe thuyết minh một điểm tham quan (POI)
+- **Luồng chính:**
+  1. Du khách chọn ngôn ngữ mới trong cài đặt.
+  2. App ghim ngôn ngữ mới cho Service Worker (`SET_ACTIVE_LANGUAGE`).
+  3. Hai làn chạy độc lập: làn nội dung (hotset 10 POI gần nhất, cần 3 POI bắt buộc, on-demand và warmup) và làn giao diện (UI bundle).
+  4. Chỉ khi cả hai làn xong, app đánh dấu hoàn tất và đổi giao diện sang ngôn ngữ mới.
+- **Luồng thay thế:** Ngôn ngữ ít dùng: UI bundle trả tiếng Anh với `status: pending`; app kiểm tra lại sau khi server dịch xong.
+- **Kết quả:** Giao diện và nội dung đồng nhất theo ngôn ngữ mới.
 
-**Tác nhân chính**: Khách tham quan (đã có access token hợp lệ)
+## UC-05. Tải gói offline
 
-**Điều kiện tiên quyết**: Toàn bộ dữ liệu POI (mô tả đa ngôn ngữ, audio, toạ độ) đã được nạp về frontend ngay sau khi xác thực thành công, theo đúng nguyên tắc "nạp một lần, không gọi lại" được quy định trong PRD gốc.
+- **Điều kiện trước:** Có mạng; còn dung lượng.
+- **Luồng chính:**
+  1. Du khách mở màn hình gói offline, thấy danh sách pack bản đồ (Quận 4, TP.HCM) và gói của ngôn ngữ hiện tại.
+  2. Bấm tải; app cài tuần tự: bản đồ, POI, ảnh, audio.
+  3. Mỗi tài sản được kiểm tra SHA-256 theo manifest.
+  4. Khi tất cả đạt, app gửi thông điệp kích hoạt cho Service Worker (`MAP_PACK_ACTIVATE`, `AUDIO_PACK_ACTIVATE`).
+  5. Bản đồ chuyển sang đọc từ cache cục bộ qua `pmtiles://`.
+- **Luồng thay thế:**
+  - 2a. Hết dung lượng (`QuotaExceededError`): Workbox xóa cache audio lẻ và ảnh, rồi thử lại.
+  - 3a. Sai checksum: không kích hoạt, đánh dấu `repairRequired`.
+  - 4a. Đã có pack khác scope đang dùng: yêu cầu cập nhật dạng thay thế (`replace_update`).
+  - Xóa gói: gửi `MAP_PACK_DEACTIVATE` hoặc `AUDIO_PACK_REMOVE_LANG`, app quay về chế độ cloud.
+- **Kết quả:** App dùng được hoàn toàn offline cho ngôn ngữ đã chọn.
 
-**Luồng chính**:
-1. Khách nhìn thấy các icon POI trên bản đồ, trong đó POI nằm gần vị trí hiện tại được làm nổi bật.
-2. Khách chạm vào một icon POI.
-3. App mở một thẻ thông tin chứa: tên POI, mô tả văn bản theo ngôn ngữ đang chọn, hình ảnh minh hoạ, và nút phát audio.
-4. Khách bấm phát audio; app phát file âm thanh thuyết minh tương ứng với ngôn ngữ hiện tại.
-5. Nếu khách đổi ngôn ngữ ngay trong lúc xem, nội dung văn bản và audio cập nhật theo ngôn ngữ mới mà không cần tải lại trang, vì toàn bộ bản dịch của tất cả ngôn ngữ đã có sẵn ở frontend.
+## UC-06. Đồng ý hoặc từ chối analytics
 
-**Luồng phụ**:
-- 4a. Thiết bị đang ở chế độ im lặng hoặc không hỗ trợ phát audio tự động: app hiển thị nút phát thủ công và cảnh báo nhẹ.
+- **Luồng chính:** App hỏi sự đồng ý; nếu đồng ý, gửi sự kiện ẩn danh qua API thu thập có kiểm soát consent; thiết bị được tính vào số online trong cửa sổ trượt.
+- **Luồng thay thế:** Từ chối: không gửi gì; app vẫn dùng bình thường.
+- **Ghi chú:** Kênh quan sát vị trí runtime là kênh riêng, có rate limit, không phụ thuộc consent analytics.
 
-**Kết quả**: Khách hiểu được nội dung của POI bằng ngôn ngữ mình lựa chọn.
+## UC-07. Đăng ký chủ quán
 
----
+- **Tác nhân:** Chủ quán (chưa có tài khoản).
+- **Luồng chính:**
+  1. Chủ quán mở trang đăng ký và nhập thông tin, kể cả số CCCD.
+  2. Gọi `POST /admin/auth/register-owner`.
+  3. Hệ thống tạo user role `poi_owner` (chưa xác minh), mã hóa CCCD và tạo đơn `poi_owner_registrations` trạng thái `pending`.
+  4. Chủ quán đăng nhập thì chỉ thấy màn trạng thái đăng ký (`/owner/registration-status`).
+- **Ngoại lệ:** Dữ liệu trùng hoặc không hợp lệ: trả lỗi và yêu cầu nhập lại.
 
-## UC-04: Tự động gợi ý nội dung khi khách đến gần một POI (Geofencing)
+## UC-08. Duyệt đăng ký chủ quán
 
-**Tác nhân chính**: Khách tham quan
-**Tác nhân phụ**: Module định vị trên frontend
+- **Tác nhân:** Admin có quyền phù hợp.
+- **Luồng chính:**
+  1. Admin mở danh sách đơn đang chờ.
+  2. Xem chi tiết và quyết định duyệt hoặc từ chối.
+  3. Duyệt: đặt `is_verified=true` và `is_poi_owner_verified=true`. Từ chối: ghi `admin_note`.
+  4. Hệ thống ghi audit log và tạo thông báo cho chủ quán.
+- **Kết quả:** Chủ quán được vào khu vực `/owner` hoặc biết lý do bị từ chối.
 
-**Luồng chính**:
-1. App liên tục theo dõi toạ độ GPS của thiết bị (khi được cấp quyền).
-2. App tính khoảng cách giữa vị trí hiện tại và toạ độ của từng POI đã nạp sẵn.
-3. Khi khoảng cách nhỏ hơn hoặc bằng bán kính (range of proximity) được cấu hình cho một POI cụ thể, app coi như khách đã "vào vùng" của POI đó.
-4. App hiển thị một thông báo nổi (hoặc rung nhẹ nếu thiết bị hỗ trợ) mời khách nghe thuyết minh, đồng thời tự mở thẻ thông tin của POI.
-5. Nếu khách không thao tác trong vài giây, hệ thống có thể tự phát audio ở chế độ nền (tuỳ theo cấu hình bật/tắt tự động phát mà khách đã chọn).
+## UC-09. Chủ quán gửi tạo/sửa POI
 
-**Luồng phụ**:
-- 1a. Khách từ chối quyền truy cập vị trí: tính năng tự động gợi ý bị vô hiệu hoá; khách vẫn có thể chạm thủ công vào từng POI để xem nội dung (rơi về luồng UC-03).
+- **Điều kiện trước:** Đã đăng nhập và `is_poi_owner_verified = true`.
+- **Luồng chính:**
+  1. Chủ quán tạo POI mới hoặc sửa POI của mình (`PUT /owner/pois/{id}`).
+  2. Hệ thống lưu thành một submission trạng thái chờ duyệt (`poi_submissions`), chưa ảnh hưởng dữ liệu công khai.
+  3. Chủ quán theo dõi trạng thái trong trang submissions và thông báo.
+- **Ngoại lệ:** Sửa POI không thuộc mình: bị từ chối (403). Chưa xác minh: bị chặn ở mọi lane nghiệp vụ.
 
-**Kết quả**: Khách nhận được trải nghiệm thuyết minh liền mạch như có hướng dẫn viên đi cùng, không cần thao tác tìm kiếm thủ công.
+## UC-10. Admin duyệt submission POI
 
----
+- **Luồng chính:**
+  1. Admin xem submission kèm nội dung đề xuất.
+  2. Duyệt hoặc từ chối kèm `admin_note`.
+  3. Khi duyệt: POI được tạo/cập nhật, hệ thống đưa việc sinh audio vào hàng đợi, tăng phiên bản dataset để các thiết bị đồng bộ delta.
+  4. Gửi thông báo kết quả cho chủ quán (`owner_notifications`).
+- **Kết quả:** POI xuất hiện công khai sau khi bản tiếng Anh và audio sẵn sàng.
 
-## UC-05: Hỏi đáp với Chatbot AI (RAG)
+## UC-11. Admin quản lý POI và sinh audio
 
-**Tác nhân chính**: Khách tham quan
-**Tác nhân phụ**: Dịch vụ AI (Azure OpenAI — mô hình sinh câu trả lời và mô hình embedding), CSDL vector
+- **Luồng chính (tạo/sửa):**
+  1. Admin lưu văn bản POI.
+  2. Hệ thống đưa vào hàng đợi sinh audio cho 5 ngôn ngữ ưu tiên.
+  3. Nếu mô tả thay đổi: xóa `audio_url` cũ, đặt `audio_status="processing"`, tạm `is_active=false`, ghi nhớ `activation_requested`.
+  4. Trình quản lý tác vụ chạy tối đa 3 tác vụ song song: dịch, đọc bằng Edge-TTS, lưu MP3, ghi bản địa hóa.
+  5. Admin xem tiến độ qua luồng SSE; có thể Pause, Resume, Cancel.
+  6. Khi xong, POI được bật lại nếu đã yêu cầu kích hoạt.
+- **Luồng chính (xóa):** Xóa theo transaction khi có thể, xóa cascade bản địa hóa, xếp việc dọn media, cập nhật phiên bản dataset.
+- **Luồng thay thế:** Bật công khai khi chưa sẵn sàng tiếng Anh/audio: hệ thống buộc sinh lại trước.
+- **Ngoại lệ:** Server khởi động lại giữa chừng: tác vụ được khôi phục từ snapshot.
 
-**Luồng chính**:
-1. Khách mở khung chat và nhập câu hỏi bằng ngôn ngữ tự nhiên, ở bất kỳ ngôn ngữ nào trong danh sách hỗ trợ.
-2. Frontend gửi câu hỏi kèm access token tới dịch vụ chatbot ở backend.
-3. Backend chuyển câu hỏi của khách thành một vector embedding bằng mô hình embedding.
-4. Backend dùng vector này để tìm kiếm những đoạn nội dung liên quan nhất trong kho tri thức đã được lập chỉ mục trước đó (mô tả các POI và tài liệu bổ sung về chùa).
-5. Backend gửi câu hỏi gốc cùng với các đoạn nội dung liên quan tìm được (ngữ cảnh) tới mô hình sinh câu trả lời (ví dụ GPT-4o mini), kèm hướng dẫn chỉ trả lời dựa trên ngữ cảnh được cung cấp và trả lời đúng ngôn ngữ của câu hỏi.
-6. Mô hình sinh ra câu trả lời; backend trả câu trả lời này về cho frontend, kèm theo hình ảnh minh hoạ nếu có POI liên quan được xác định.
-7. Frontend hiển thị câu trả lời và hình ảnh (nếu có) trong khung chat.
+## UC-12. Chủ quán dùng AI Advisor
 
-**Luồng phụ**:
-- 4a. Không tìm thấy nội dung liên quan đủ tin cậy trong kho tri thức: mô hình được hướng dẫn trả lời thành thật rằng chưa có đủ thông tin, thay vì suy đoán, và có thể gợi ý khách hỏi nhân viên tại chỗ.
-- 2a. Access token không hợp lệ/hết hạn: backend từ chối yêu cầu, frontend đưa khách quay lại luồng thanh toán.
+- **Luồng chính:**
+  1. Chủ quán mở form POI và bấm "Cải thiện mô tả".
+  2. Giao diện gọi `GET /ai/usage` để hiển thị số lượt còn lại, sau đó `POST /ai/enhance-description`.
+  3. Hệ thống kiểm tra hạn mức 10 lượt/ngày; nếu còn, gọi Gemini 2.5 Flash hoặc ProxyPal với yêu cầu không bịa, có thể thêm tính từ tích cực, 200–300 từ.
+  4. Trả bản đề xuất; chủ quán chọn dùng hay không.
+- **Ngoại lệ:** Hết hạn mức: báo lỗi. Quá 30 giây: hết thời gian chờ, giao diện nhận lỗi theo nhà cung cấp.
+- **Ghi chú:** Admin không bị giới hạn.
 
-**Kết quả**: Khách nhận được câu trả lời chính xác, có căn cứ, bằng đúng ngôn ngữ đã hỏi.
+## UC-13. Đăng nhập, làm mới phiên, đăng xuất
 
----
+- **Luồng chính:**
+  1. Người dùng gửi tên đăng nhập và mật khẩu.
+  2. Hệ thống xác thực (bcrypt) và đặt hai cookie httpOnly: access (30 phút), refresh (7 ngày); JWT chứa danh sách quyền.
+  3. Mỗi yêu cầu kế tiếp mang cookie; route kiểm tra quyền từ JWT, không cần truy vấn DB cho hầu hết yêu cầu.
+  4. Access hết hạn: dùng refresh để cấp lại.
+  5. Đăng xuất xóa cookie.
+- **Thay thế:** Client không phải trình duyệt có thể dùng Bearer header.
+- **Ngoại lệ:** Sai thông tin: 401. Thiếu quyền: 403.
 
-## UC-06: Quản trị viên thêm/sửa một điểm tham quan (POI) và tự động dịch nội dung
+## UC-14. Quản lý role và quyền
 
-**Tác nhân chính**: Quản trị viên
-**Tác nhân phụ**: Data pipeline dịch thuật & TTS, CSDL, Storage
-
-**Điều kiện tiên quyết**: Quản trị viên đã đăng nhập vào admin dashboard.
-
-**Luồng chính**:
-1. Quản trị viên mở màn hình quản lý POI, chọn "Thêm mới" hoặc chọn một POI hiện có để chỉnh sửa.
-2. Quản trị viên nhập/sửa: tên POI, mô tả gốc (thường bằng tiếng Việt), toạ độ, bán kính phạm vi, hình ảnh thumbnail.
-3. Quản trị viên lưu thay đổi.
-4. Backend lưu bản ghi POI vào cơ sở dữ liệu chính và kích hoạt data pipeline xử lý bất đồng bộ (không bắt quản trị viên phải chờ).
-5. Pipeline lần lượt: (a) dịch mô tả gốc sang toàn bộ ngôn ngữ được hỗ trợ (tối thiểu 15 ngôn ngữ), (b) với mỗi bản dịch, sinh file audio thuyết minh tương ứng bằng dịch vụ chuyển văn bản thành giọng nói, (c) lưu các file audio vào kho lưu trữ đối tượng, (d) cập nhật bản ghi POI trong cơ sở dữ liệu với đường dẫn tới từng bản dịch và file audio, (e) cập nhật chỉ mục vector cho chatbot để nội dung mới cũng có thể được chatbot tham chiếu khi trả lời câu hỏi.
-6. Khi pipeline hoàn tất, admin dashboard hiển thị trạng thái "đã sẵn sàng" cho POI đó; nếu có bước nào lỗi (ví dụ dịch vụ dịch thuật tạm thời không phản hồi), dashboard hiển thị trạng thái lỗi kèm khả năng thử lại.
-
-**Kết quả**: POI mới/được cập nhật có đầy đủ nội dung đa ngôn ngữ mà quản trị viên không cần tự dịch hay tự thu âm.
-
----
-
-## UC-07: Nhân viên xác nhận thanh toán tiền mặt
-
-Đã mô tả chi tiết trong UC-02 (bước 3 đến 8), với tác nhân chính lúc này là Nhân viên: nhân viên thao tác trên một giao diện quản trị đơn giản, nhập/khớp session_id, xác nhận số tiền đã thu, và hệ thống tự sinh mã ngắn để giao lại cho khách. Nhân viên không cần truy cập bất kỳ dữ liệu quản trị nào khác ngoài phạm vi xác nhận thanh toán.
-
----
-
-## UC-08: Quản trị viên theo dõi tình trạng hệ thống
-
-**Tác nhân chính**: Quản trị viên
-
-**Luồng chính**:
-1. Quản trị viên mở màn hình Monitoring Dashboard.
-2. Dashboard truy vấn định kỳ các chỉ số vận hành: tình trạng hoạt động của backend, độ trễ trung bình các API chính, tỉ lệ lỗi, số phiên đang hoạt động, số lượt xem theo từng POI, số câu hỏi chatbot đã xử lý trong khoảng thời gian gần nhất.
-3. Dashboard hiển thị các chỉ số này dưới dạng số liệu và biểu đồ thời gian thực; nếu một chỉ số vượt ngưỡng cảnh báo (ví dụ tỉ lệ lỗi cao bất thường), dashboard làm nổi bật cảnh báo đó.
-
-**Kết quả**: Quản trị viên nắm được sức khoẻ hệ thống và mức độ sử dụng để ra quyết định vận hành kịp thời.
+- **Tác nhân:** Super Admin (hoặc người có quyền `role:*`).
+- **Luồng chính:** Xem danh sách role; tạo role mới với tập quyền chọn từ 32 quyền; sửa hoặc xóa; gán role cho user. Thay đổi ghi audit log.
+- **Ghi chú:** Quyền định nghĩa tĩnh trong mã; role lưu động trong DB.

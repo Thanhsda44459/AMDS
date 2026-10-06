@@ -9,7 +9,7 @@ services:
     ports:
       - "27017:27017"
     environment:
-      MONGO_INITDB_DATABASE: quan4_culinary
+      MONGO_INITDB_DATABASE: amds
       # Không set username/password ở dev để đơn giản.
       # Nếu cần auth, bật MONGO_INITDB_ROOT_USERNAME/PASSWORD và cập nhật MONGODB_URI.
     volumes:

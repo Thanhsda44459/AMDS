@@ -1,55 +1,107 @@
-# 01. Phạm Vi Đồ Án — Hệ Thống Hướng Dẫn Tham Quan Thông Minh Chùa Linh Ứng
+# 01 — Project Scope (Phạm vi đồ án)
 
-## 1. Tên đồ án
-**Hệ thống hướng dẫn tham quan thông minh tích hợp GPS và trợ lý ảo AI tại Chùa Linh Ứng** (tên gọi tắt trong tài liệu: **LinhUngGuide**).
+> Nguồn: file `system-presentation-standalone.html` (phân tích từ mã nguồn).
+> Quy ước: nội dung lấy trực tiếp từ tài liệu gốc; mục đánh dấu **[Đề xuất]** là phần bổ sung do người viết suy ra, cần nhóm xác nhận.
 
-## 2. Bối cảnh và lý do thực hiện
-Chùa Linh Ứng (Đà Nẵng) đón lượng lớn du khách trong và ngoài nước mỗi năm, nhưng phần lớn khách tham quan độc lập (không đi theo tour có hướng dẫn viên) hiện gặp hai vấn đề chính:
+## 1. Tên và mô tả đề tài
 
-1. Không có hướng dẫn đa ngôn ngữ tại chỗ — khách nước ngoài khó hiểu ý nghĩa lịch sử, kiến trúc, tôn giáo của từng điểm tham quan (POI — Point of Interest).
-2. Không có kênh hỏi đáp tức thời — khi có thắc mắc, khách phải tìm nhân viên hoặc tra cứu thủ công, gây gián đoạn trải nghiệm.
+**Tên đề tài:** Hệ thống Du lịch Ẩm thực Quận 4 (Quan4 Culinary Tourism).
 
-Đồ án xây dựng một web app (PWA) chạy trên trình duyệt di động, cho phép khách tự định vị bằng GPS, nghe/đọc thuyết minh đa ngôn ngữ tại từng POI, và trò chuyện với một chatbot AI (dạng RAG — Retrieval-Augmented Generation) để được giải đáp thắc mắc bằng ngôn ngữ tự nhiên.
+**Mô tả ngắn:** Ứng dụng web tiến bộ (PWA) full-stack giúp du khách khám phá ẩm thực đường phố Quận 4, TP.HCM. Ứng dụng hiển thị bản đồ tương tác, tự động phát thuyết minh âm thanh khi người dùng đi vào vùng quanh một điểm quan tâm (POI), hỗ trợ đa ngôn ngữ và hoạt động được khi không có mạng.
 
-## 3. Mục tiêu của đồ án
-- Xây dựng trải nghiệm thuyết minh tự động, sống động, không cần hướng dẫn viên con người.
-- Tự động phát nội dung tương ứng với vị trí hiện tại của khách nhờ GPS/geofencing.
-- Hỗ trợ tối thiểu 15 ngôn ngữ cho cả văn bản và âm thanh, bao gồm tiếng Việt.
-- Tích hợp chatbot RAG trả lời câu hỏi tự do của khách dựa trên kho tri thức của chùa.
-- Cho phép thu phí truy cập qua hai kênh: thanh toán trực tuyến (Payoo) và thanh toán tiền mặt tại chỗ (qua nhân viên).
-- Cung cấp trang quản trị (admin dashboard) để nhân viên/quản trị viên quản lý dữ liệu POI, phiên tham quan, và một bảng giám sát (monitoring dashboard) theo thời gian thực.
+## 2. Bối cảnh và vấn đề cần giải quyết
 
-## 4. Phạm vi trong đồ án (In-scope)
-| Hạng mục | Mô tả |
+- Du khách quốc tế khó tiếp cận thông tin về quán ăn đường phố vì rào cản ngôn ngữ.
+- Khu vực du lịch thường có sóng yếu hoặc du khách không có data roaming, nên ứng dụng phải chạy được offline.
+- Chủ quán nhỏ cần một kênh tự đăng tải và cập nhật thông tin quán của mình mà không tốn chi phí cao.
+- Chi phí vận hành phải thấp: ưu tiên công nghệ mã nguồn mở và dịch vụ miễn phí.
+
+## 3. Mục tiêu
+
+1. Cung cấp bản đồ POI ẩm thực Quận 4 với nội dung mô tả, hình ảnh, thực đơn.
+2. Tự động thuyết minh bằng giọng nói theo vị trí GPS (geofence) và theo ngôn ngữ người dùng chọn.
+3. Hỗ trợ tối thiểu 5 ngôn ngữ chính (vi, en, zh, ja, ko) và dịch nền cho các ngôn ngữ ít dùng hơn.
+4. Hoạt động offline thông qua Service Worker, IndexedDB, gói bản đồ PMTiles và gói âm thanh.
+5. Cho phép chủ quán đăng ký, gửi POI và chờ duyệt; cho phép quản trị viên vận hành toàn hệ thống.
+6. Hỗ trợ chủ quán nâng cấp mô tả bằng AI (Gemini 2.5 Flash / ProxyPal) trong hạn mức.
+7. Giữ chi phí lõi gần như bằng 0 (Edge-TTS, deep-translator, MapLibre, PMTiles đều miễn phí).
+
+## 4. Đối tượng sử dụng
+
+| Nhóm | Mô tả |
 |---|---|
-| Web app khách tham quan | PWA responsive, chạy trên trình duyệt di động (Android/iOS), không cần cài đặt từ store |
-| Bản đồ & định vị GPS | Hiển thị vị trí khách theo thời gian thực, đánh dấu các POI trong bán kính lân cận |
-| Thuyết minh đa ngôn ngữ | Văn bản + audio cho từng POI, tối thiểu 15 ngôn ngữ, chuyển ngôn ngữ tức thời qua biểu tượng chọn ngôn ngữ |
-| Gợi ý lộ trình | Đề xuất tuyến tham quan gồm nhiều POI theo thứ tự hợp lý |
-| Chatbot AI (RAG) | Trả lời câu hỏi tự do bằng ngôn ngữ tự nhiên, dựa trên dữ liệu POI và tài liệu bổ sung của chùa |
-| Thanh toán truy cập | Quét mã QR tại cổng vào → thanh toán online (Payoo) hoặc tiền mặt (qua nhân viên) → nhận access token |
-| Data pipeline dịch & TTS | Tự động dịch mô tả POI sang 15+ ngôn ngữ và sinh audio tương ứng khi nội dung được tạo/cập nhật |
-| Admin dashboard | Tạo/sửa/xoá POI, quản lý phiên (session), quản lý xác nhận thanh toán tiền mặt |
-| Monitoring dashboard | Theo dõi tình trạng hệ thống và số liệu sử dụng theo thời gian thực |
+| Khách du lịch (user / guest) | Dùng app công khai để xem bản đồ, nghe thuyết minh. Không bắt buộc đăng nhập. |
+| Chủ quán (poi_owner) | Đăng ký, được duyệt, quản lý quán của mình, gửi nội dung chờ duyệt, dùng AI Advisor. |
+| Quản trị viên (admin) | Quản lý POI, menu, người dùng, duyệt đơn, xem analytics và audit log. |
+| Siêu quản trị (super_admin) | Có toàn bộ 32 quyền, quản lý role và cấu hình hệ thống. |
 
-## 5. Ngoài phạm vi đồ án (Out-of-scope)
-- Ứng dụng native cài đặt qua App Store / Google Play (chỉ làm web app/PWA).
-- Chức năng đặt vé theo đoàn, quản lý tour du lịch, CRM khách hàng.
-- Thanh toán quốc tế (thẻ Visa/Mastercard nước ngoài) — chỉ dùng cổng Payoo nội địa trong phạm vi đồ án; có thể mở rộng sau.
-- Chức năng mạng xã hội (đánh giá, bình luận công khai, chia sẻ ảnh cộng đồng).
-- Chế độ hoạt động hoàn toàn ngoại tuyến (offline-first) dài hạn — chỉ triển khai cache cơ bản để tăng tốc độ tải, chưa làm đồng bộ dữ liệu ngoại tuyến đầy đủ (được ghi nhận là "Future considerations" trong PRD gốc).
-- Ứng dụng riêng cho hướng dẫn viên chuyên nghiệp hoặc công cụ soạn thảo nội dung nâng cao (rich content editor) ngoài admin dashboard cơ bản.
+## 5. Phạm vi — TRONG đồ án (In scope)
 
-## 6. Đối tượng người dùng (Stakeholders)
-- **Khách tham quan (Visitor/Guest)**: người dùng cuối, dùng web app trên điện thoại cá nhân.
-- **Nhân viên (Staff)**: nhân viên tại quầy/cổng, xác nhận thanh toán tiền mặt, hỗ trợ khách.
-- **Quản trị viên (Admin)**: quản lý toàn bộ dữ liệu hệ thống, theo dõi vận hành, cấu hình.
-- **Ban quản lý chùa Linh Ứng**: chủ đầu tư/đơn vị vận hành, quan tâm đến số liệu sử dụng và doanh thu.
+### 5.1 Ứng dụng công khai (PWA)
+- Màn hình khởi động, chọn ngôn ngữ, bản đồ POI.
+- Định vị GPS, geofence, tự động phát thuyết minh.
+- Audio 4 tầng (pre-generated, on-demand, cloud TTS, local speech synthesis).
+- Nội dung đa ngôn ngữ với 3 tầng fallback (ngôn ngữ yêu cầu, tiếng Anh, tiếng Việt gốc).
+- UI i18n theo bundle.
+- Offline: Service Worker, IndexedDB, Offline Pack (map, POI, images, audio).
+- Ba chế độ bản đồ: Cloud, Offline Pack, Hybrid.
+- Đồng ý (consent) trước khi thu thập analytics.
 
-## 7. Ràng buộc của đồ án
-- Thời gian thực hiện giới hạn trong khuôn khổ một học kỳ/đồ án tốt nghiệp, do đó công nghệ được chọn ưu tiên tính ổn định, tài liệu phong phú, chi phí vận hành thấp (ưu tiên dịch vụ có gói miễn phí/giá rẻ cho môi trường thử nghiệm).
-- Chỉ triển khai thử nghiệm (pilot) tại một địa điểm — Chùa Linh Ứng — chưa tính đến việc nhân rộng sang nhiều địa điểm khác trong phạm vi đồ án (kiến trúc có tính mở rộng nhưng chưa hiện thực hoá đa tenant).
-- Cổng thanh toán Payoo yêu cầu đăng ký tài khoản doanh nghiệp; trong môi trường phát triển/demo sẽ dùng môi trường sandbox của Payoo.
+### 5.2 Backend (FastAPI + MongoDB)
+- Mười router: content, audio, admin, owner, ai_advisor, analytics, localization, maps, runtime_observability, ui_i18n.
+- Xác thực cookie httpOnly (JWT access 30 phút, refresh 7 ngày), RBAC động với 32 quyền.
+- Sinh audio nền bằng Edge-TTS với tiến độ thời gian thực qua SSE.
+- Mã hóa PII (số CCCD chủ quán) bằng Fernet, tự động che sau 180 ngày.
+- Audit log, thông báo cho chủ quán, giới hạn tần suất (rate limit).
 
-## 8. Mốc thời gian tham chiếu
-Theo Launch Plan trong PRD gốc: mốc **Pilot** (kiểm thử sơ bộ tại hiện trường) dự kiến **16/05/2025**. Đồ án sẽ bám theo mốc này làm cột mốc bàn giao bản demo có thể kiểm thử thực tế.
+### 5.3 Cổng quản trị
+- Admin Dashboard (CRUD POI, user, role, menu; duyệt đăng ký và submission; analytics; audit log; theo dõi tác vụ audio).
+- Owner Portal (đăng ký, trạng thái xác minh, quản lý quán, submission, thông báo, AI Advisor).
+
+## 6. Phạm vi — NGOÀI đồ án (Out of scope)
+
+- Ứng dụng native iOS/Android (chỉ có PWA).
+- Thanh toán, đặt món, đặt bàn, giao hàng.
+- Đánh giá/bình luận của người dùng, mạng xã hội.
+- Đăng nhập khách bằng Google hoặc mạng xã hội. **Tài liệu gốc không đề cập tính năng này**; khách dùng app ẩn danh. (Xem mục chú thích trong `10_External_Services.md`.)
+- Mở rộng ra ngoài Quận 4 (kiến trúc có hỗ trợ scope nhiều pack bản đồ nhưng dữ liệu chính là Quận 4 và TP.HCM).
+- Tính năng định tuyến/dẫn đường turn-by-turn **[Đề xuất: không nằm trong tài liệu gốc]**.
+- Hạ tầng microservice; hệ thống là modular monolith.
+
+## 7. Ràng buộc và giả định
+
+| Loại | Nội dung |
+|---|---|
+| Công nghệ | Backend FastAPI + Motor (MongoDB), Redis; frontend React 19.2, Vite 7, Zustand, MapLibre GL JS, Turf.js, Workbox, idb. |
+| Chi phí | Lõi mã nguồn mở. Gemini/ProxyPal cần API key; MapTiler chỉ cần cho chế độ cloud/hybrid; OpenWeather chỉ khi bật ngữ cảnh thời tiết cho AI. |
+| Trình duyệt | Cần hỗ trợ Service Worker, Cache API, IndexedDB, Geolocation, Web Speech Synthesis. |
+| Quyền riêng tư | Analytics chỉ chạy sau khi người dùng đồng ý; PII mã hóa và hết hạn sau 180 ngày. |
+| Ngôn ngữ nội dung gốc | Tiếng Việt; bản dịch sinh bằng máy. |
+| Giả định | Dữ liệu POI nhập qua admin/owner; chất lượng dịch máy chấp nhận được cho thuyết minh. |
+
+## 8. Sản phẩm bàn giao (Deliverables)
+
+1. Mã nguồn backend và frontend.
+2. Bộ tài liệu 12 file (thư mục này).
+3. Gói bản đồ PMTiles cho Quận 4 (và TP.HCM nếu có).
+4. Dữ liệu mẫu POI và tài khoản siêu quản trị khởi tạo.
+5. Hướng dẫn triển khai (`12_Deployment.md`).
+
+## 9. Tiêu chí hoàn thành
+
+- Người dùng mở app, chọn ngôn ngữ, thấy bản đồ và POI trong thời gian hợp lý.
+- Đi vào bán kính POI (mặc định 30 m) thì nghe được thuyết minh đúng ngôn ngữ, không phát lặp trong 5 phút.
+- Tắt mạng sau khi cài Offline Pack vẫn xem được bản đồ, POI và nghe được audio đã tải.
+- Chủ quán đăng ký, được admin duyệt, gửi POI, nhận thông báo kết quả.
+- Admin quản lý được toàn bộ dữ liệu và xem được audit log.
+- Các ca kiểm thử trong `11_Test_Plan.md` đạt.
+
+## 10. Rủi ro chính
+
+| Rủi ro | Hướng xử lý |
+|---|---|
+| GPS nhiễu, sai lệch trong khu dân cư đông | Debounce 3 giây, throttle 5 giây, cooldown 5 phút, chấp nhận độ chính xác tới 100 m. |
+| Dịch vụ miễn phí (Edge-TTS, Google Translate wrapper) bị giới hạn hoặc thay đổi | Cache MD5 trên đĩa, rate limit, fallback sang speechSynthesis của trình duyệt. |
+| Hết dung lượng thiết bị khi tải Offline Pack | Workbox tự xóa runtime cache để nhường chỗ cho pack. |
+| Lạm dụng AI/dịch on-demand | Quota 10/ngày cho owner; giới hạn 30 yêu cầu/10 phút cho on-demand. |
+| Lộ thông tin cá nhân chủ quán | Mã hóa Fernet, che sau 180 ngày, không trả PII khi giải mã lỗi. |

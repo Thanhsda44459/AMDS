@@ -1,73 +1,176 @@
-# 02. Yêu Cầu Hệ Thống — LinhUngGuide
+# 02 — Requirements (Yêu cầu hệ thống)
 
-## 1. Yêu cầu chức năng (Functional Requirements)
+> Mã yêu cầu: **FR-xx** (chức năng), **NFR-xx** (phi chức năng). Mức ưu tiên: **M** = bắt buộc, **S** = nên có, **C** = có thể có.
 
-### 1.1. Nhóm: Truy cập & Thanh toán
-| Mã | Yêu cầu | Mô tả chi tiết |
+## A. Yêu cầu chức năng
+
+### A1. Khởi động và ngôn ngữ
+
+| ID | Yêu cầu | Ưu tiên |
 |---|---|---|
-| FR-01 | Quét QR vào cổng | Khách quét mã QR đặt tại cổng chùa để mở web app trên trình duyệt di động |
-| FR-02 | Thanh toán trực tuyến | Khách chọn "Pay Now (Online)", hệ thống tạo liên kết thanh toán qua Payoo, khách hoàn tất thanh toán và được cấp quyền truy cập |
-| FR-03 | Thanh toán tiền mặt | Khách chọn "Pay with Cash", nhận mã ngắn (shortened code), đưa mã cho nhân viên, nhân viên xác nhận đã thu tiền, hệ thống đổi mã lấy access token cho khách |
-| FR-04 | Cấp và xác thực access token | Sau khi thanh toán thành công (bằng bất kỳ hình thức nào), hệ thống cấp access token; mọi tính năng trong app chỉ hoạt động khi token hợp lệ |
-| FR-05 | Hết hạn phiên | Access token có thời hạn sử dụng tương ứng với một lượt tham quan (ví dụ theo ngày); hệ thống từ chối truy cập khi token hết hạn |
+| FR-01 | Khi mở app, hiển thị màn hình splash và cho người dùng chọn ngôn ngữ. | M |
+| FR-02 | Sau khi chọn ngôn ngữ, app tải song song: vị trí tốt nhất có thể, snapshot offline, nội dung POI (delta sync), hotset và UI bundle. | M |
+| FR-03 | App có thể khởi động nhanh bằng tiếng Anh trong lúc ngôn ngữ đích đang được chuẩn bị. | S |
+| FR-04 | Trước khi kết luận lỗi mạng, app thử thăm dò (`/audio/languages`, `/maps/offline-options`) với timeout 2,5 giây, tối đa 2 lần trong cửa sổ 8 giây. | S |
+| FR-05 | Chuyển ngôn ngữ chỉ được xem là hoàn tất khi cả nội dung (hotset: 3 POI bắt buộc) và UI bundle đều sẵn sàng. | M |
 
-### 1.2. Nhóm: Bản đồ & Định vị
-| Mã | Yêu cầu | Mô tả chi tiết |
+### A2. Bản đồ và POI
+
+| ID | Yêu cầu | Ưu tiên |
 |---|---|---|
-| FR-06 | Hiển thị vị trí khách | App lấy toạ độ GPS của thiết bị và hiển thị vị trí khách trên bản đồ số của khuôn viên chùa |
-| FR-07 | Hiển thị POI lân cận | Hệ thống làm nổi bật các POI nằm trong bán kính cấu hình sẵn quanh vị trí hiện tại |
-| FR-08 | Tự động phát nội dung theo vị trí | Khi khách bước vào phạm vi (range of proximity) của một POI, nội dung thuyết minh tương ứng được gợi ý/tự phát mà không cần thao tác thủ công |
-| FR-09 | Gợi ý lộ trình tham quan | Hệ thống đề xuất một chuỗi POI theo thứ tự hợp lý kèm chỉ đường giữa các điểm; số lượng và thứ tự POI trong lộ trình có thể tuỳ chỉnh |
+| FR-10 | Hiển thị bản đồ vector với các POI đang hoạt động. | M |
+| FR-11 | Hiển thị chi tiết POI: tên, mô tả, hình ảnh (tối đa 8, mỗi ảnh tối đa 5 MB), thực đơn (menu item), tọa độ, bán kính kích hoạt. | M |
+| FR-12 | Lấy danh sách POI gần vị trí người dùng (`/poi/nearby`), ưu tiên truy vấn không gian `$geoNear`, fallback Haversine nếu lỗi. | M |
+| FR-13 | Tải toàn bộ POI bằng full sync hoặc delta sync (ETag, `If-None-Match`, `updated_after`), trả về `dataset_version`, `sync_mode`, `removed_poi_ids`, `sync_cursor`. | M |
+| FR-14 | Nút định vị: dùng `requestBestEffortPosition()` ưu tiên vị trí cache còn tốt (tuổi tối đa 30 giây, sai số chấp nhận tới 100 m, ngân sách 15 giây). | M |
+| FR-15 | Ba chế độ bản đồ: Cloud, Offline Pack, Hybrid (cloud trước, tự chuyển sang pack khi mất mạng; quay lại cloud có độ trễ để tránh nhấp nháy). | M |
 
-### 1.3. Nhóm: Nội dung đa ngôn ngữ
-| Mã | Yêu cầu | Mô tả chi tiết |
+### A3. Geofence và thuyết minh
+
+| ID | Yêu cầu | Ưu tiên |
 |---|---|---|
-| FR-10 | Xem thông tin POI | Khách chạm vào một POI trên bản đồ để xem mô tả dạng văn bản và nghe audio thuyết minh |
-| FR-11 | Chuyển đổi ngôn ngữ | Khách chọn ngôn ngữ ưa thích qua biểu tượng ở góc trên bên phải; toàn bộ nội dung văn bản/audio đang hiển thị cập nhật theo ngôn ngữ mới ngay lập tức |
-| FR-12 | Hỗ trợ tối thiểu 15 ngôn ngữ | Toàn bộ mô tả POI phải có sẵn bản dịch cho tối thiểu 15 ngôn ngữ, bao gồm tiếng Việt |
-| FR-13 | Data pipeline dịch & TTS tự động | Khi nội dung một POI được tạo mới hoặc chỉnh sửa trong admin dashboard, hệ thống tự động dịch văn bản sang toàn bộ ngôn ngữ được hỗ trợ và sinh file audio tương ứng, không cần thao tác thủ công cho từng ngôn ngữ |
+| FR-20 | Theo dõi vị trí liên tục (`watchPosition`) với throttle 5 giây. | M |
+| FR-21 | Phát hiện vào vùng POI khi khoảng cách ≤ bán kính (mặc định 30 m); xác nhận sau debounce 3 giây. | M |
+| FR-22 | Sau khi kích hoạt một POI, không kích hoạt lại trong cooldown 5 phút khi người dùng rời vùng. | M |
+| FR-23 | Khi nhiều POI cùng đủ điều kiện, chọn theo `audio_priority` rồi đến khoảng cách. | M |
+| FR-24 | Có vòng reconcile an toàn mỗi 5 giây. | S |
+| FR-25 | Hàng đợi thuyết minh một ô (single-slot priority queue). | M |
+| FR-26 | Nếu người dùng đổi ngôn ngữ trong lúc chờ audio on-demand, kết quả cũ bị bỏ. | M |
+| FR-27 | Prefetch nền: quét POI `is_fallback=true` trong 500 m, tối đa 3 POI mỗi đợt, cách nhau tối thiểu 30 giây, backoff khi gặp 429 (30 s, 60 s, 120 s, tối đa 10 phút). | S |
 
-### 1.4. Nhóm: Chatbot AI (RAG)
-| Mã | Yêu cầu | Mô tả chi tiết |
+### A4. Audio và dịch
+
+| ID | Yêu cầu | Ưu tiên |
 |---|---|---|
-| FR-14 | Đặt câu hỏi tự do | Khách nhập câu hỏi bằng ngôn ngữ tự nhiên (ngôn ngữ bất kỳ trong danh sách hỗ trợ) vào khung chat |
-| FR-15 | Trả lời dựa trên tri thức của chùa | Chatbot tìm kiếm thông tin liên quan trong kho tri thức (mô tả POI và tài liệu bổ sung), tổng hợp và trả lời bằng ngôn ngữ mà khách đã dùng để hỏi |
-| FR-16 | Đính kèm hình ảnh minh hoạ | Câu trả lời của chatbot có thể kèm hình ảnh liên quan đến POI được nhắc tới, nếu có |
-| FR-17 (tương lai) | Lưu cache câu hỏi thường gặp | Lưu lại các cặp hỏi-đáp gần đây để tăng tốc độ phản hồi cho câu hỏi lặp lại (ghi nhận trong PRD là "Future considerations", không bắt buộc ở bản MVP) |
+| FR-30 | Phát audio theo 4 tầng: (1) file đã sinh sẵn, (1.5) dịch và TTS theo yêu cầu, (2) TTS đám mây dạng stream, (3) `speechSynthesis` cục bộ. | M |
+| FR-31 | Sinh audio bằng Edge-TTS; giọng ưu tiên: vi HoaiMy, en Jenny, zh Xiaoxiao, ja Nanami, ko SunHi. | M |
+| FR-32 | Cache audio theo khóa MD5 của `text:lang`; trùng khóa thì không sinh lại. | M |
+| FR-33 | Khi tạo/sửa POI, tự đưa vào hàng đợi sinh audio cho 5 ngôn ngữ ưu tiên (song song tối đa 3). | M |
+| FR-34 | Khi mô tả đổi: xóa `audio_url` cũ, đặt `audio_status="processing"`, tạm đặt `is_active=false` và ghi nhớ `activation_requested`. | M |
+| FR-35 | Backend gắn `?v={updated_at}&l={lang}` vào `audio_url` để chống cache cũ và phân shard cache theo ngôn ngữ. | S |
+| FR-36 | Admin theo dõi tác vụ audio thời gian thực (SSE), có thể tạm dừng, tiếp tục, hủy. | M |
+| FR-37 | Cung cấp `pack-manifest` cho từng ngôn ngữ (danh sách file, SHA-256, tổng dung lượng, phiên bản). | M |
+| FR-38 | Nội dung POI có 3 tầng fallback: ngôn ngữ yêu cầu, tiếng Anh, tiếng Việt gốc (với `audio_url = null`). | M |
+| FR-39 | UI bundle theo locale; 5 ngôn ngữ chính có bundle tĩnh; ngôn ngữ ít dùng trả tiếng Anh với `status: pending` và `source_hash` trong lúc dịch nền. | M |
 
-### 1.5. Nhóm: Quản trị (Admin/Staff)
-| Mã | Yêu cầu | Mô tả chi tiết |
+### A5. Offline
+
+| ID | Yêu cầu | Ưu tiên |
 |---|---|---|
-| FR-18 | Đăng nhập quản trị | Nhân viên/quản trị viên đăng nhập bằng tài khoản riêng, phân quyền theo vai trò |
-| FR-19 | Quản lý POI | Tạo, sửa, xoá (hoặc vô hiệu hoá) thông tin POI: toạ độ, bán kính, mô tả gốc, hình ảnh thumbnail |
-| FR-20 | Quản lý phiên tham quan | Tạo phiên (session) khi khách thanh toán tiền mặt, sinh mã claim code, theo dõi trạng thái thanh toán |
-| FR-21 | Quản lý dữ liệu chung | Chỉnh sửa thông tin cấu hình hệ thống liên quan tới nội dung (không bao gồm cấu hình hạ tầng) |
+| FR-40 | Service Worker cache theo chiến lược: POI NetworkFirst (8 giây, TTL 15 phút), audio CacheFirst theo ngôn ngữ, ảnh CacheFirst có purge khi đầy quota. | M |
+| FR-41 | Lưu POI theo ngôn ngữ và UI bundle trong IndexedDB (`Quan4DB v2`); offline fallback theo thứ tự ngôn ngữ chọn, en, vi. | M |
+| FR-42 | Giới hạn cache audio: tối đa 300 file mỗi ngôn ngữ, tối đa 3 ngôn ngữ đồng thời, loại bỏ theo LRU (ghim ngôn ngữ đang dùng). | M |
+| FR-43 | Offline Pack theo ngôn ngữ gồm 4 phần cài tuần tự: map, POI, images, audio; kiểm tra SHA-256 từng tài sản trước khi kích hoạt. | M |
+| FR-44 | Hiển thị trạng thái pack: `updateAvailable`, `repairRequired`, `poiMissing`. | S |
+| FR-45 | Khi tải pack gặp `QuotaExceededError`, tự xóa runtime cache audio/ảnh để nhường chỗ. | M |
+| FR-46 | Khi kiểm tra bản cập nhật từ xa lỗi liên tiếp, vào cooldown thay vì gọi lặp. | S |
+| FR-47 | Gói bản đồ PMTiles: tải, xác thực, kích hoạt; cho phép nhiều pack theo scope (Quận 4, TP.HCM) và `replace_update` khi trùng scope. | M |
+| FR-48 | Đồng bộ build: khi phiên bản app đổi, xóa cache chunk tùy chọn cũ (`APP_BUILD_SYNC`). | S |
 
-### 1.6. Nhóm: Giám sát hệ thống
-| Mã | Yêu cầu | Mô tả chi tiết |
+### A6. Xác thực và phân quyền
+
+| ID | Yêu cầu | Ưu tiên |
 |---|---|---|
-| FR-22 | Bảng giám sát thời gian thực | Hiển thị tình trạng hoạt động của các dịch vụ backend (uptime, độ trễ, tỉ lệ lỗi) |
-| FR-23 | Thống kê sử dụng | Hiển thị số lượt truy cập, số phiên đang hoạt động, POI được xem nhiều nhất, số câu hỏi chatbot đã xử lý |
-| FR-24 (tương lai) | Nhật ký hoạt động thời gian thực | Ghi log chi tiết hành vi người dùng để phục vụ phân tích sau này (ghi nhận là "Future considerations" trong PRD) |
+| FR-50 | Đăng nhập admin/owner bằng cookie httpOnly: access token 30 phút, refresh token 7 ngày. | M |
+| FR-51 | Hỗ trợ thêm Bearer header cho API/mobile fallback. | S |
+| FR-52 | Đăng xuất, đổi mật khẩu, lấy thông tin tài khoản hiện tại. | M |
+| FR-53 | RBAC động: 32 quyền thuộc 9 nhóm; role lưu trong MongoDB; bảo vệ route bằng `require_permission`. | M |
+| FR-54 | Bốn role mặc định: super_admin, admin, poi_owner, user. | M |
+| FR-55 | Owner chỉ được vào các chức năng nghiệp vụ khi `is_poi_owner_verified = true`. | M |
+| FR-56 | Mật khẩu băm bằng bcrypt. | M |
 
-## 2. Yêu cầu phi chức năng (Non-Functional Requirements)
+### A7. Chủ quán
 
-| Mã | Danh mục | Yêu cầu |
+| ID | Yêu cầu | Ưu tiên |
 |---|---|---|
-| NFR-01 | Hiệu năng | Thời gian tải trang lần đầu (sau khi thanh toán) không quá 3 giây trên mạng 4G trung bình; nội dung POI hiển thị tức thời (< 300ms) vì toàn bộ dữ liệu đã được nạp sẵn xuống frontend sau khi xác thực |
-| NFR-02 | Hiệu năng chatbot | Thời gian phản hồi trung bình của chatbot (từ lúc gửi câu hỏi đến khi nhận câu trả lời đầy đủ) không quá 5 giây |
-| NFR-03 | Khả năng tương thích | Hoạt động ổn định trên các trình duyệt di động phổ biến: Chrome, Safari, Samsung Internet, trên cả Android và iOS, không yêu cầu cài đặt ứng dụng |
-| NFR-04 | Khả năng mở rộng | Kiến trúc backend cho phép mở rộng theo chiều ngang (horizontal scaling) để đáp ứng lượng truy cập tăng vào mùa cao điểm lễ hội |
-| NFR-05 | Bảo mật dữ liệu | Access token và thông tin thanh toán được truyền qua HTTPS; mật khẩu tài khoản quản trị được băm (hash) trước khi lưu trữ |
-| NFR-06 | Bảo mật thanh toán | Không lưu trữ trực tiếp thông tin thẻ/tài khoản ngân hàng của khách trong hệ thống; toàn bộ xử lý nhạy cảm uỷ quyền cho cổng Payoo |
-| NFR-07 | Độ chính xác GPS | Sai số định vị hiển thị trên bản đồ không vượt quá phạm vi cho phép của thiết bị di động phổ thông (thường 5–15m ngoài trời); hệ thống có cơ chế làm mượt (smoothing) để tránh vị trí "nhảy" liên tục |
-| NFR-08 | Chất lượng dịch thuật & giọng đọc | Bản dịch và giọng đọc tổng hợp phải tự nhiên, dễ hiểu, đúng ngữ cảnh văn hoá – tôn giáo; có bước rà soát thủ công đối với nội dung quan trọng trước khi công bố |
-| NFR-09 | Khả dụng (Availability) | Hệ thống đảm bảo tỉ lệ hoạt động tối thiểu 99% trong giờ mở cửa của chùa |
-| NFR-10 | Khả năng quan sát (Observability) | Toàn bộ lỗi hệ thống được ghi log tập trung và có cảnh báo khi tỉ lệ lỗi vượt ngưỡng |
-| NFR-11 | Đa ngôn ngữ giao diện | Bản thân giao diện người dùng (nút bấm, nhãn, thông báo) cũng được đa ngôn ngữ hoá, không chỉ nội dung thuyết minh POI |
-| NFR-12 | Khả năng bảo trì | Mã nguồn tuân theo cấu trúc module rõ ràng, có tài liệu API, để nhóm phát triển hoặc người kế thừa dễ dàng bảo trì sau khi đồ án kết thúc |
-| NFR-13 | Chi phí vận hành | Ưu tiên các dịch vụ có gói miễn phí/giá rẻ trong giai đoạn thử nghiệm (pilot), hạn chế chi phí vượt ngân sách đồ án |
-| NFR-14 | Khả năng dùng lại dữ liệu | Vì dữ liệu POI được nạp toàn bộ về frontend một lần sau xác thực, hệ thống phải đảm bảo dung lượng payload hợp lý (nén dữ liệu, không nạp toàn bộ audio ngay mà chỉ nạp theo yêu cầu) để tránh tải chậm ban đầu |
+| FR-60 | Đăng ký chủ quán công khai (`POST /admin/auth/register-owner`), tạo user poi_owner chưa xác minh và đơn `pending`. | M |
+| FR-61 | Admin duyệt hoặc từ chối đơn kèm `admin_note`; khi duyệt đặt `is_verified` và `is_poi_owner_verified`. | M |
+| FR-62 | Owner gửi tạo/cập nhật POI dưới dạng submission chờ duyệt; chỉ sửa được quán của mình. | M |
+| FR-63 | Owner nhận thông báo kết quả duyệt, có trạng thái đã đọc/chưa đọc và trang chi tiết. | M |
+| FR-64 | Số CCCD của chủ quán được mã hóa, tự che sau 180 ngày. | M |
+| FR-65 | Owner dùng AI Advisor để cải thiện mô tả (200–300 từ, không bịa thông tin), tối đa 10 lần/ngày; admin không giới hạn. | S |
+| FR-66 | Hiển thị hạn mức AI còn lại (`GET /ai/usage`). | S |
 
-## 3. Ma trận truy vết yêu cầu (tóm tắt)
-Mỗi yêu cầu chức năng ở trên đều được ánh xạ tới ít nhất một use case trong tài liệu `04_Use_Cases.md` và một hoặc nhiều endpoint API trong `07_API_Specification.md`, đảm bảo không có yêu cầu nào bị "mồ côi" (không được hiện thực hoá) hoặc thiết kế dư thừa không phục vụ yêu cầu nào.
+### A8. Quản trị
+
+| ID | Yêu cầu | Ưu tiên |
+|---|---|---|
+| FR-70 | CRUD POI, menu, user, role. | M |
+| FR-71 | Bật/tắt công khai POI; không cho bật khi chưa sẵn sàng tiếng Anh/audio (phải sinh lại trước). | M |
+| FR-72 | Xóa POI theo transaction khi có thể, cascade sang `poi_localizations`, đưa dọn media vào hàng đợi, cập nhật dataset version. | M |
+| FR-73 | Xem audit log (hành động, người thực hiện, tài nguyên, thời gian). | M |
+| FR-74 | Xem dashboard analytics và cửa sổ quan sát vị trí runtime. | S |
+| FR-75 | Quản lý duyệt đăng ký chủ quán và submission POI. | M |
+
+### A9. Analytics và quyền riêng tư
+
+| ID | Yêu cầu | Ưu tiên |
+|---|---|---|
+| FR-80 | Chỉ thu thập analytics sau khi người dùng đồng ý (consent). | M |
+| FR-81 | Thống kê số thiết bị ẩn danh đang online trong cửa sổ trượt (`tracked_online_users`). | S |
+| FR-82 | Kênh quan sát vị trí runtime tách riêng, có rate limit, không trộn với analytics. | S |
+| FR-83 | Tổng hợp số liệu theo giờ/ngày thành read model. | S |
+
+## B. Yêu cầu phi chức năng
+
+### B1. Hiệu năng
+
+| ID | Yêu cầu |
+|---|---|
+| NFR-01 | Audio tầng 1 phát từ cache gần như tức thì (~0 ms mạng). |
+| NFR-02 | Audio tầng 1.5 hoàn tất trong khoảng 2–5 giây; tầng 2 khoảng 3–8 giây. |
+| NFR-03 | GPS xử lý throttle 5 giây để tránh render/sắp xếp liên tục. |
+| NFR-04 | `/poi/load-all` hỗ trợ ETag và delta sync để giảm băng thông. |
+| NFR-05 | Giới hạn tải tạo audio nền: tối đa 3 tác vụ TTS song song. |
+| NFR-06 | PMTiles phục vụ bằng Range Request; file bất biến cache dài hạn. |
+
+### B2. Độ tin cậy và khả dụng
+
+| ID | Yêu cầu |
+|---|---|
+| NFR-10 | Người dùng không bao giờ thấy màn hình trống: có chuỗi fallback ngôn ngữ và 4 lớp phòng thủ offline. |
+| NFR-11 | Backend kiểm tra bí mật bắt buộc khi khởi động ở môi trường không phải dev và dừng ngay nếu thiếu (fail-fast). |
+| NFR-12 | Có `/health` và `/health/ready` (kiểm tra sẵn sàng DB/transaction/storage). |
+| NFR-13 | Tác vụ audio phục hồi sau khi backend khởi động lại (snapshot Mongo, heartbeat 5 giây, coi là treo sau 5 phút, lưu 14 ngày). |
+| NFR-14 | Giới hạn tần suất dùng trạng thái chung (Mongo/Redis) để hoạt động đúng khi chạy nhiều tiến trình. |
+
+### B3. Bảo mật
+
+| ID | Yêu cầu |
+|---|---|
+| NFR-20 | Token nằm trong cookie httpOnly, SameSite=Lax, Secure (chống XSS và CSRF cơ bản). |
+| NFR-21 | Mật khẩu bcrypt; JWT ký HS256. |
+| NFR-22 | PII mã hóa Fernet (tiền tố `v1:`), che sau 180 ngày, giải mã lỗi trả `None`. |
+| NFR-23 | Chặn Path Traversal ở dịch vụ bản đồ (`resolve_safe_path`). |
+| NFR-24 | Giới hạn: on-demand 30 yêu cầu/10 phút; AI owner 10/ngày; kích thước ảnh tối đa 5 MB. |
+| NFR-25 | Mọi hành động quản trị quan trọng ghi audit log. |
+
+### B4. Quyền riêng tư
+
+| ID | Yêu cầu |
+|---|---|
+| NFR-30 | Privacy-by-design: analytics chỉ khi có consent. |
+| NFR-31 | Tối thiểu hóa dữ liệu: PII tự hết hạn sau 180 ngày. |
+
+### B5. Khả năng sử dụng và quốc tế hóa
+
+| ID | Yêu cầu |
+|---|---|
+| NFR-40 | Hỗ trợ tối thiểu vi, en, zh, ja, ko; ngôn ngữ khác dịch nền. |
+| NFR-41 | Giao diện responsive cho điện thoại là ưu tiên **[Đề xuất]**. |
+| NFR-42 | Khi dùng nội dung thay thế (fallback) phải báo cho frontend biết qua `is_fallback`. |
+
+### B6. Khả năng bảo trì và chi phí
+
+| ID | Yêu cầu |
+|---|---|
+| NFR-50 | Kiến trúc modular monolith, tách ranh giới theo router/service/store. |
+| NFR-51 | Lõi dùng phần mềm mã nguồn mở/miễn phí; phần có API key là tùy chọn. |
+| NFR-52 | Cache an toàn khi triển khai bản mới (không lẫn asset giữa hai build). |
+
+### B7. Tương thích
+
+| ID | Yêu cầu |
+|---|---|
+| NFR-60 | Trình duyệt hiện đại có Service Worker, Cache API, IndexedDB, Geolocation. |
+| NFR-61 | Có thể cài đặt như PWA lên màn hình chính. |

@@ -87,7 +87,7 @@ Nội dung `.env.example`:
 
 - Sửa `.env` **không có tác dụng** lúc này.
 - `MONGODB_URI` mặc định `mongodb://localhost:27017` — trùng với Docker Compose nên vẫn chạy được.
-- `MONGODB_DB_NAME` mặc định **`AMSD`** (khác với giá trị `quan4_culinary` trong `.env.example`). Xem [Mục 9](#9-giới-hạn-và-nợ-kỹ-thuật).
+- `MONGODB_DB_NAME` mặc định **`amds`** (khớp với `.env.example`). Xem [Mục 9](#9-giới-hạn-và-nợ-kỹ-thuật).
 - `JWT_SECRET` và `REDIS_URL` chưa có code đọc tới.
 
 Việc gom cấu hình vào `backend/app/config.py` (dùng `pydantic-settings`) là task kế tiếp trong backlog. Sau khi task đó hoàn thành, mục này sẽ được cập nhật lại.
@@ -285,7 +285,7 @@ Những thứ **chưa** có ở Phase 0, để bạn không tìm nhầm:
 | Vấn đề | Chi tiết | Nên sửa ở |
 |---|---|---|
 | `.env` chưa được nạp | xem [Mục 3](#3-cấu-hình-biến-môi-trường) | task `config.py` |
-| Tên DB không nhất quán | `database.py` hardcode `AMSD`, còn `.env.example` ghi `quan4_culinary` | task `config.py` |
+| Tên DB không nhất quán | `db.py` hardcode `amds`, trùng với `.env.example` | không cần sửa nữa |
 | `.env` chưa nằm trong `.gitignore` | `.gitignore` chỉ có `.env.local` và `.env.docker`; nếu bạn tạo `.env` thật thì file đó **sẽ bị commit** | nên sửa ngay — thêm dòng `.env` |
 | Chưa có test | không có thư mục `tests/`, chưa cài `pytest` | task test đầu tiên |
 | Chưa có CORS | không có middleware CORS; frontend gọi `localhost:5173` sẽ bị chặn trình duyệt | khi frontend bắt đầu gọi API |
