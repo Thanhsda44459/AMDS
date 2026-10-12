@@ -1,0 +1,99 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+# TEST-002: lưới an toàn cho mọi thay đổi. Bước nào đỏ thì CI đỏ — đã kiểm
+# bằng cách cố tình phá một hành vi có test (xem README mục "CI đỏ khi cố tình phá").
+jobs:
+  backend:
+    name: Backend (lint + unit + integration)
+    runs-on: ubuntu-latest
+    services:
+      redis:
+        image: redis:7.2-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 3s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r backend/requirements.txt
+      # TEST-003: replica set một node cho transaction. PHẢI chạy `docker run
+      # ... --replSet rs0` chứ không dùng services:, vì services: không cho
+      # đổi lệnh khởi động của container — rs.initiate trên mongod standalone
+      # hỏng với "This node was not started with replication enabled" (đã kiểm
+      # thật trên mongod 7.0).
+      - name: Khởi động Mongo replica set
+        run: |
+          docker run -d --name mongodb -p 27017:27017 mongo:7.0 --replSet rs0
+          for i in $(seq 1 30); do
+            if docker exec mongodb mongosh --quiet \
+              --eval 'db.runCommand({ping: 1}).ok' 2>/dev/null | grep -q 1; then
+              break
+            fi
+            sleep 2
+          done
+          docker exec mongodb mongosh --quiet --eval \
+            'rs.initiate({_id: "rs0", members: [{_id: 0, host: "localhost:27017"}]})'
+          for i in $(seq 1 30); do
+            if docker exec mongodb mongosh --quiet \
+              --eval 'db.hello().isWritablePrimary' | grep -q true; then
+              echo "replica set sẵn sàng"; exit 0
+            fi
+            sleep 2
+          done
+          echo "replica set không lên"; exit 1
+      - name: Bật transaction cho test
+        run: echo "MONGODB_URI=mongodb://localhost:27017/?replicaSet=rs0" >> "$GITHUB_ENV"
+      - name: ruff check
+        working-directory: backend
+        run: ruff check .
+      # pyproject addopts ghim `-m 'not integration'` → chạy `pytest -q` thường
+      # sẽ LOẠI integration (8 test) dù bước tên là "unit + integration". Phải
+      # ghi đè addopts rồi tự chọn lại marker.
+      - name: unit
+        working-directory: backend
+        run: pytest -q
+      - name: integration
+        working-directory: backend
+        run: pytest -q -m integration -o addopts="-ra"
+
+  frontend:
+    name: Frontend (lint + type + unit + e2e)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+        working-directory: frontend
+      - name: eslint
+        run: npm run lint
+        working-directory: frontend
+      - name: type + build
+        run: npm run build
+        working-directory: frontend
+      - name: vitest
+        run: npm test
+        working-directory: frontend
+      # TEST-006..008: E2E chỉ chạy ở CI, không chạy mặc định khi lập trình
+      # vì chậm và cần backend với dữ liệu mẫu.
+      - name: cài Playwright
+        run: npx playwright install --with-deps chromium
+        working-directory: frontend
+      - name: e2e
+        run: npm run test:e2e
+        working-directory: frontend
+        env:
+          E2E_SKIP_WEBSERVER: "1"

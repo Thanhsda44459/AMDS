@@ -1,0 +1,72 @@
+# TEST-003: hạ tầng cho test tích hợp.
+#
+# KHÁC docker-compose.yml ở MỘT ĐIỂM: Mongo chạy thành replica set một node
+# (`--replSet rs0`). Lý do: transaction của Mongo chỉ chạy được trên replica set.
+# Đó là điều kiện tiên quyết cho PROD-004 (xoá POI cascade không để lại dữ liệu
+# mồ côi), nên phải dựng sẵn ở Phase 11 thay vì lúc tới Phase 14.
+#
+# `name:` bên dưới là BẮT BUỘC: cả hai file cùng nằm ở thư mục gốc nên mặc
+# định chung project "amds". Chạy file này sẽ khiến compose dừng container của
+# docker-compose.yml (đã gặp: mất Mongo/Redis dev giữa chừng). Tên project riêng
+# làm hai bộ hạ tầng độc lập, cùng lúc vẫn chạy được.
+#
+# Chạy:
+#   docker compose -f docker-compose.test.yml up -d --wait
+#   cd backend
+#   pytest -m integration -o addopts="-ra"
+#
+# Dừng:
+#   docker compose -f docker-compose.test.yml down
+
+name: quan4-test
+
+services:
+  mongodb:
+    image: mongo:7.0
+    container_name: quan4-mongodb-rs
+    restart: unless-stopped
+    ports:
+      - "27018:27017"
+    command: ["--replSet", "rs0", "--bind_ip_all"]
+    healthcheck:
+      # Ping bình thường không đủ: replica set chưa initiate thì vẫn ping được,
+      # nên phải hỏi isWritablePrimary.
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.hello().isWritablePrimary"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+
+  # Một job chạy đúng một lần sau khi Mongo healthy: rs.initiate.
+  # Không làm được trong command của Mongo vì cần đợi cổng sẵn sàng.
+  mongodb-init:
+    image: mongo:7.0
+    container_name: quan4-mongodb-rs-init
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    restart: "no"
+    entrypoint:
+      - sh
+      - -c
+      - >
+        mongosh --host mongodb:27017 --quiet --eval
+        'try { rs.status().ok } catch (e) { rs.initiate({_id:"rs0",members:[{_id:0,host:"mongodb:27017"}]}).ok }'
+    # `host` phải là địa chỉ mongod tự thấy được. Đặt là localhost:27018 sẽ hỏng
+    # với "No host described in new configuration maps to this node" vì trong
+    # container, 27018 không tồn tại (27018 chỉ là cổng publish ra máy host).
+    # Client từ máy host kết nối bằng directConnection nên không cần định tuyến
+    # theo tên service.
+
+  redis:
+    image: redis:7.2-alpine
+    container_name: quan4-redis-test
+    restart: unless-stopped
+    ports:
+      - "6380:6379"
+    command: ["redis-server"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20

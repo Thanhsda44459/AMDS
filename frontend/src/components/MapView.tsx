@@ -11,6 +11,8 @@ interface Props {
   pois: Poi[]
   selectedId: string | null
   onSelect: (id: string) => void
+  // Style pack offline thắng style cloud khi có.
+  stylePack?: maplibregl.StyleSpecification | null
 }
 
 // Lời hướng dẫn theo từng lỗi định vị của trình duyệt.
@@ -21,13 +23,14 @@ function loiDinhVi(code?: number): string {
   return ''
 }
 
-export default function MapView({ pois, selectedId, onSelect }: Props) {
+export default function MapView({ pois, selectedId, onSelect, stylePack }: Props) {
   const khungRef = useRef<HTMLDivElement | null>(null)
   const mapRef = useRef<maplibregl.Map | null>(null)
   const [thongBaoViTri, setThongBaoViTri] = useState('')
   const [dungCloud, setDungCloud] = useState(false)
 
-  // MAP-001 + MAP-006: dựng bản đồ, có key thì dùng style cloud, không thì demo miễn phí.
+  // MAP-001 + MAP-006: dựng bản đồ một lần, pack tới sau thì effect dưới đổi style.
+  const styleLanDau = useRef(stylePack)
   useEffect(() => {
     if (khungRef.current === null || mapRef.current !== null) return
     const key = import.meta.env.VITE_MAPTILER_KEY as string | undefined
@@ -35,7 +38,7 @@ export default function MapView({ pois, selectedId, onSelect }: Props) {
     setDungCloud(style !== STYLE_MIEN_PHI)
     const map = new maplibregl.Map({
       container: khungRef.current,
-      style,
+      style: styleLanDau.current ?? style,
       center: TAM_Q4,
       zoom: 14,
     })
@@ -46,6 +49,13 @@ export default function MapView({ pois, selectedId, onSelect }: Props) {
       mapRef.current = null
     }
   }, [])
+
+  // Pack offline cài sau thì đổi style khi có, markers giữ nguyên.
+  useEffect(() => {
+    if (mapRef.current !== null && stylePack !== undefined && stylePack !== null) {
+      mapRef.current.setStyle(stylePack)
+    }
+  }, [stylePack])
 
   // MAP-002: một marker cho mỗi POI, chú ý thứ tự [lng, lat]. Dọn khi pois đổi.
   useEffect(() => {
@@ -102,9 +112,11 @@ export default function MapView({ pois, selectedId, onSelect }: Props) {
 
   return (
     <div>
-      <div ref={khungRef} style={{ width: '100%', height: '380px' }} />
-      <p>{dungCloud ? 'Đang dùng nền MapTiler cloud.' : 'Đang dùng nền demo miễn phí. Thêm VITE_MAPTILER_KEY để dùng cloud.'}</p>
-      {thongBaoViTri !== '' && <p>{thongBaoViTri}</p>}
+      <div className="map-frame">
+        <div ref={khungRef} style={{ width: '100%', height: '380px' }} />
+      </div>
+      <p className="map-hint">{dungCloud ? 'Đang dùng nền MapTiler cloud.' : 'Đang dùng nền demo miễn phí. Thêm VITE_MAPTILER_KEY để dùng cloud.'}</p>
+      {thongBaoViTri !== '' && <div className="notice notice--warn mt">{thongBaoViTri}</div>}
     </div>
   )
 }

@@ -1,111 +1,545 @@
+/* =========================================================================
+   AMDS — Design system (giao diện du lịch ẩm thực Quận 4)
+   Token màu theo UI/UX spec: cam đậm #e65100, xanh ngọc #00838f, nền sáng.
+   ========================================================================= */
+
 :root {
-  --text: #6b6375;
-  --text-h: #08060d;
-  --bg: #fff;
-  --border: #e5e4e7;
-  --code-bg: #f4f3ec;
-  --accent: #aa3bff;
-  --accent-bg: rgba(170, 59, 255, 0.1);
-  --accent-border: rgba(170, 59, 255, 0.5);
-  --social-bg: rgba(244, 243, 236, 0.5);
-  --shadow:
-    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
+  /* Nhận diện thương hiệu */
+  --amds-primary: #e65100;
+  --amds-primary-strong: #bf360c;
+  --amds-accent: #00838f;
+  --amds-accent-strong: #006064;
 
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --mono: ui-monospace, Consolas, monospace;
+  /* Nền và chữ */
+  --amds-bg: #faf8f5;
+  --amds-surface: #ffffff;
+  --amds-text: #2a2622;
+  --amds-text-muted: #7a736b;
+  --amds-text-faint: #9a938b;
 
-  font: 18px/145% var(--sans);
-  letter-spacing: 0.18px;
-  color-scheme: light dark;
-  color: var(--text);
-  background: var(--bg);
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
+  /* Đường viền và vùng */
+  --amds-border: #ece5dc;
+  --amds-border-strong: #d9d0c4;
+
+  /* Trạng thái */
+  --amds-danger: #d32f2f;
+  --amds-danger-bg: #fbeaea;
+  --amds-success: #2e7d32;
+  --amds-success-bg: #e8f5e9;
+  --amds-info: #1565c0;
+  --amds-info-bg: #e8f0fb;
+  --amds-warning: #b26a00;
+  --amds-warning-bg: #fff4e0;
+
+  /* Hệ bóng đổ */
+  --amds-shadow-sm: 0 1px 2px rgba(46, 38, 30, 0.06);
+  --amds-shadow: 0 2px 6px rgba(46, 38, 30, 0.08);
+  --amds-shadow-lg: 0 10px 30px rgba(46, 38, 30, 0.12);
+
+  /* Bo góc và khoảng cách */
+  --amds-radius-sm: 8px;
+  --amds-radius: 12px;
+  --amds-radius-lg: 18px;
+  --amds-space: 8px;
+
+  /* Font */
+  --amds-sans: 'Segoe UI', system-ui, -apple-system, Roboto, sans-serif;
+
+  font-family: var(--amds-sans);
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--amds-text);
+  background: var(--amds-bg);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-
-  @media (max-width: 1024px) {
-    font-size: 16px;
-  }
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --text: #9ca3af;
-    --text-h: #f3f4f6;
-    --bg: #16171d;
-    --border: #2e303a;
-    --code-bg: #1f2028;
-    --accent: #c084fc;
-    --accent-bg: rgba(192, 132, 252, 0.15);
-    --accent-border: rgba(192, 132, 252, 0.5);
-    --social-bg: rgba(47, 48, 58, 0.5);
-    --shadow:
-      rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
-  }
-
-  #social .button-icon {
-    filter: invert(1) brightness(2);
-  }
-}
-
-#root {
-  width: 1126px;
-  max-width: 100%;
-  margin: 0 auto;
-  text-align: center;
-  border-inline: 1px solid var(--border);
-  min-height: 100svh;
-  display: flex;
-  flex-direction: column;
+*,
+*::before,
+*::after {
   box-sizing: border-box;
 }
 
+html,
 body {
   margin: 0;
+  padding: 0;
 }
 
-h1,
-h2 {
-  font-family: var(--heading);
-  font-weight: 500;
-  color: var(--text-h);
+body {
+  background: var(--amds-bg);
+  color: var(--amds-text);
+  min-height: 100vh;
 }
 
-h1 {
-  font-size: 56px;
-  letter-spacing: -1.68px;
-  margin: 32px 0;
-  @media (max-width: 1024px) {
-    font-size: 36px;
-    margin: 20px 0;
-  }
+/* =========================================================================
+   Bố cục khung
+   ========================================================================= */
+
+.app {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 0 var(--amds-space);
+  padding-bottom: calc(var(--amds-space) * 12);
 }
-h2 {
-  font-size: 24px;
-  line-height: 118%;
-  letter-spacing: -0.24px;
-  margin: 0 0 8px;
-  @media (max-width: 1024px) {
-    font-size: 20px;
-  }
+
+.app__header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 18px 2px 12px;
 }
-p {
+
+.app__title {
+  font-size: 1.35rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--amds-primary);
   margin: 0;
 }
 
-code,
-.counter {
-  font-family: var(--mono);
-  display: inline-flex;
-  border-radius: 4px;
-  color: var(--text-h);
+.app__subtitle {
+  color: var(--amds-text-muted);
+  font-size: 0.82rem;
+  margin-top: 2px;
 }
 
-code {
-  font-size: 15px;
-  line-height: 135%;
-  padding: 4px 8px;
-  background: var(--code-bg);
+.app__nav {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  padding: 6px;
+  background: var(--amds-surface);
+  border: 1px solid var(--amds-border);
+  border-radius: var(--amds-radius-lg);
+  box-shadow: var(--amds-shadow-sm);
+  margin-bottom: var(--amds-space);
+  scrollbar-width: none;
+}
+
+.app__nav::-webkit-scrollbar {
+  display: none;
+}
+
+.app__tab {
+  flex: 1 0 auto;
+  appearance: none;
+  border: none;
+  background: transparent;
+  padding: 9px 14px;
+  border-radius: var(--amds-radius);
+  font: inherit;
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--amds-text-muted);
+  cursor: pointer;
+  white-space: nowrap;
+  min-height: 40px;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.app__tab:hover {
+  color: var(--amds-primary);
+  background: rgba(230, 81, 0, 0.06);
+}
+
+.app__tab--active {
+  color: #fff;
+  background: var(--amds-primary);
+}
+
+.app__tab--active:hover {
+  color: #fff;
+  background: var(--amds-primary-strong);
+}
+
+/* =========================================================================
+   Trạng thái / thông báo
+   ========================================================================= */
+
+.notice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: var(--amds-radius);
+  font-size: 0.88rem;
+  margin: var(--amds-space) 0;
+  line-height: 1.45;
+}
+
+.notice--info {
+  background: var(--amds-info-bg);
+  color: var(--amds-info);
+}
+
+.notice--warn {
+  background: var(--amds-warning-bg);
+  color: var(--amds-warning);
+}
+
+.notice--error {
+  background: var(--amds-danger-bg);
+  color: var(--amds-danger);
+}
+
+.notice--ok {
+  background: var(--amds-success-bg);
+  color: var(--amds-success);
+}
+
+/* =========================================================================
+   Nút
+   ========================================================================= */
+
+.btn {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px solid var(--amds-border-strong);
+  background: var(--amds-surface);
+  color: var(--amds-text);
+  font: inherit;
+  font-weight: 600;
+  font-size: 0.9rem;
+  padding: 9px 16px;
+  border-radius: var(--amds-radius);
+  cursor: pointer;
+  min-height: 40px;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.btn:hover {
+  border-color: var(--amds-primary);
+  color: var(--amds-primary);
+}
+
+.btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.btn--primary {
+  background: var(--amds-primary);
+  border-color: var(--amds-primary);
+  color: #fff;
+}
+
+.btn--primary:hover {
+  background: var(--amds-primary-strong);
+  border-color: var(--amds-primary-strong);
+  color: #fff;
+}
+
+.btn--accent {
+  background: var(--amds-accent);
+  border-color: var(--amds-accent);
+  color: #fff;
+}
+
+.btn--accent:hover {
+  background: var(--amds-accent-strong);
+  border-color: var(--amds-accent-strong);
+  color: #fff;
+}
+
+.btn--ghost {
+  background: transparent;
+  border-color: transparent;
+}
+
+.btn--ghost:hover {
+  background: rgba(230, 81, 0, 0.06);
+  border-color: transparent;
+}
+
+.btn--danger {
+  color: var(--amds-danger);
+  border-color: var(--amds-danger);
+}
+
+.btn--danger:hover {
+  background: var(--amds-danger);
+  border-color: var(--amds-danger);
+  color: #fff;
+}
+
+.btn--sm {
+  padding: 5px 10px;
+  font-size: 0.82rem;
+  min-height: 32px;
+  border-radius: var(--amds-radius-sm);
+}
+
+/* =========================================================================
+   Form
+   ========================================================================= */
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-bottom: var(--amds-space);
+}
+
+.field__label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--amds-text-muted);
+}
+
+.input {
+  appearance: none;
+  width: 100%;
+  font: inherit;
+  font-size: 0.95rem;
+  padding: 10px 12px;
+  border: 1px solid var(--amds-border-strong);
+  border-radius: var(--amds-radius);
+  background: var(--amds-surface);
+  color: var(--amds-text);
+  min-height: 42px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.input::placeholder {
+  color: var(--amds-text-faint);
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--amds-primary);
+  box-shadow: 0 0 0 3px rgba(230, 81, 0, 0.15);
+}
+
+/* =========================================================================
+   Thẻ nội dung
+   ========================================================================= */
+
+.card {
+  background: var(--amds-surface);
+  border: 1px solid var(--amds-border);
+  border-radius: var(--amds-radius-lg);
+  padding: 18px;
+  box-shadow: var(--amds-shadow);
+  margin-bottom: var(--amds-space);
+}
+
+.card__title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--amds-text);
+  margin: 0 0 4px;
+}
+
+.card__subtitle {
+  font-size: 0.85rem;
+  color: var(--amds-text-muted);
+  margin: 0 0 12px;
+}
+
+.section-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  margin: 18px 0 10px;
+  color: var(--amds-accent);
+}
+
+/* =========================================================================
+   Badge / chip
+   ========================================================================= */
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--amds-bg);
+  color: var(--amds-text-muted);
+  border: 1px solid var(--amds-border);
+}
+
+.badge--accent {
+  background: var(--amds-accent);
+  border-color: var(--amds-accent);
+  color: #fff;
+}
+
+.badge--ok {
+  background: var(--amds-success-bg);
+  color: var(--amds-success);
+  border-color: transparent;
+}
+
+.badge--warn {
+  background: var(--amds-warning-bg);
+  color: var(--amds-warning);
+  border-color: transparent;
+}
+
+.badge--error {
+  background: var(--amds-danger-bg);
+  color: var(--amds-danger);
+  border-color: transparent;
+}
+
+/* =========================================================================
+   Danh sách POI
+   ========================================================================= */
+
+.poi-list {
+  list-style: none;
+  margin: var(--amds-space) 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.poi-item {
+  background: var(--amds-surface);
+  border: 1px solid var(--amds-border);
+  border-radius: var(--amds-radius);
+  padding: 1px;
+  transition: box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+.poi-item:hover {
+  box-shadow: var(--amds-shadow);
+}
+
+.poi-btn {
+  appearance: none;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 6px 12px;
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: transparent;
+  padding: 12px 14px;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  border-radius: var(--amds-radius);
+}
+
+.poi-btn__name {
+  font-weight: 700;
+  font-size: 0.98rem;
+  color: var(--amds-text);
+}
+
+.poi-btn__desc {
+  grid-column: 1 / -1;
+  font-size: 0.86rem;
+  color: var(--amds-text-muted);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.poi-btn__arrow {
+  color: var(--amds-primary);
+  font-weight: 700;
+  align-self: center;
+}
+
+/* =========================================================================
+   Bảng (admin)
+   ========================================================================= */
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.table th,
+.table td {
+  text-align: left;
+  padding: 9px 10px;
+  border-bottom: 1px solid var(--amds-border);
+  vertical-align: middle;
+}
+
+.table th {
+  font-weight: 600;
+  color: var(--amds-text-muted);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+/* =========================================================================
+   Tiến độ
+   ========================================================================= */
+
+.progress {
+  height: 8px;
+  background: var(--amds-bg);
+  border-radius: 999px;
+  overflow: hidden;
+  border: 1px solid var(--amds-border);
+}
+
+.progress__bar {
+  height: 100%;
+  background: var(--amds-accent);
+  border-radius: 999px;
+  transition: width 0.2s ease;
+}
+
+/* =========================================================================
+   Bản đồ
+   ========================================================================= */
+
+.map-frame {
+  border-radius: var(--amds-radius-lg);
+  overflow: hidden;
+  border: 1px solid var(--amds-border);
+  box-shadow: var(--amds-shadow);
+}
+
+.map-hint {
+  font-size: 0.8rem;
+  color: var(--amds-text-faint);
+  margin: 8px 2px 0;
+}
+
+/* =========================================================================
+   Trợ giúp nhỏ
+   ========================================================================= */
+
+.muted {
+  color: var(--amds-text-muted);
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.spread {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.mt {
+  margin-top: var(--amds-space);
+}
+
+.mb {
+  margin-bottom: var(--amds-space);
 }

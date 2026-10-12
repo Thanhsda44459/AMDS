@@ -33,3 +33,15 @@ ignore = [
 quote-style = "double"          # dùng " thay vì '
 indent-style = "space"
 line-ending = "auto"
+
+[tool.pytest.ini_options]
+# -ra để thấy lý do bỏ qua (quan trọng với integration).
+# "not integration" mặc định: test tích hợp cần Mongo replica set + Redis riêng
+# qua docker-compose.test.yml, không nên chạy lẫn vào lệnh unit thường ngày.
+addopts = "-ra -m 'not integration'"
+testpaths = ["tests"]
+markers = [
+    # TEST-003: cần Mongo replica set thật (transaction chỉ chạy trên replica set).
+    # Chạy riêng: pytest -m integration -o addopts="-ra"
+    "integration: test tích hợp với Mongo/Redis thật qua container",
+]
